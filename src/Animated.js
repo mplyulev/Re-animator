@@ -35,6 +35,12 @@ class Animated extends Component {
       //   speed: 5000,
       //   type: 'linear'
       // },
+      paddingLeft: {
+        from: 1,
+        to: 1000,
+        speed: 10000,
+        type: 'ease-in'
+      },
       backgroundColor: {
         from: 'gray',
         to: 'white',
@@ -62,7 +68,7 @@ class Animated extends Component {
     return (
       
        
-        <Reanimate animations={animations} globalSpeed={2000} interval={500}> 
+        <Reanimate animations={animations} globalSpeed={1111} interval={1}> 
         {arrays.map(text => {
           return  <div>{text}</div>  
         })}

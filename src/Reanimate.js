@@ -20,14 +20,25 @@ class Reanimate extends Component {
     let { animations, globalSpeed, interval } = this.props;
     const style = {};
     style.transition = ''
-    let cssName = ''
+     
 
     Object.entries(animations).map(([key, value], index) => {
       if (typeof value.from !== 'undefined') {
         style[key] = value.from;
       }
+      let cssName = ''
+      if (key !== key.toLowerCase()) {
+         
+        const keys = key.match(/([A-Z]?[^A-Z]*)/g).slice(0,-1);
+        keys.forEach((keyPart, index) => {
+          cssName += keyPart.toLowerCase();
+          if (index !== keys.length - 1) {
+            cssName += '-';
+          }
+           
+        });
+      }
 
-      cssName = config[key] && config[key].cssName;
       style.transition += `${cssName || key} ${(value.speed || globalSpeed) / 1000}s ${value.type}${index !== Object.entries(animations).length - 1 ? ', ' : ''}`;
     });
     
