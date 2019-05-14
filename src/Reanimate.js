@@ -17,7 +17,7 @@ class Reanimate extends Component {
   }
 
   componentDidMount() {
-    let { animations } = this.props;
+    let { animations, globalSpeed, interval } = this.props;
     const style = {};
     style.transition = ''
     let cssName = ''
@@ -28,9 +28,9 @@ class Reanimate extends Component {
       }
 
       cssName = config[key] && config[key].cssName;
-      style.transition += `${cssName || key} ${value.speed / 1000}s ${value.type}${index !== Object.entries(animations).length - 1 ? ', ' : ''}`;
+      style.transition += `${cssName || key} ${(value.speed || globalSpeed) / 1000}s ${value.type}${index !== Object.entries(animations).length - 1 ? ', ' : ''}`;
     });
-     
+    
     this.setState({ style });
 
     const newStyle = Object.assign({}, style);
@@ -53,7 +53,7 @@ class Reanimate extends Component {
             console.log(childrenStyles);
               this.setState({ childrenStyles })
           }, 50)
-        }, 1000*index)
+        }, interval*index)
     })
   }
   

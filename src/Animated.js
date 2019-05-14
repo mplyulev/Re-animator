@@ -14,18 +14,14 @@ class Animated extends Component {
       backgroundColor: 'red',
     };
 
-   
-
     const animations = {
       height: {
         from: 0,
         to: 100,
-        speed: 5000,
         type: 'ease-in',
       },
       opacity: {     
         to: 1,
-        speed: 5000,
         type: 'ease-in-out',
       },
       // top: {
@@ -42,30 +38,21 @@ class Animated extends Component {
       backgroundColor: {
         from: 'gray',
         to: 'white',
-        speed: 5000,
         type: 'ease-in'
       },
-      // border: {
-      //   from: '1px solid white',
-      //   to: '100px dashed green',
-      //   speed: 10000,
-      //   type: 'linear'
-      // },
-      // filter: {
-      //   to: 'grayscale(20%) drop-shadow(8px 8px 140px yellow)',
-      //   speed: 11000,
-      //   type: 'ease-in'
-      // },
+      border: {
+        from: '1px solid white',
+        to: '5px dashed green',
+        type: 'linear'
+      },
       fontSize: {
         from: 200,
         to: 12,
-        speed: 5000,
         type: 'ease-in'
       },
       color: {
         from: 'red',
         to: 'blue',
-        speed: 5000,
         type: 'linear'
       }
     } 
@@ -75,7 +62,7 @@ class Animated extends Component {
     return (
       
        
-        <Reanimate animations={animations}> 
+        <Reanimate animations={animations} globalSpeed={2000} interval={500}> 
         {arrays.map(text => {
           return  <div>{text}</div>  
         })}
