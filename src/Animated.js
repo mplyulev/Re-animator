@@ -1,18 +1,26 @@
-import React, { Component } from 'react';
+import React, { Component, Fragment } from 'react';
 import './Reanimate.css';
 import Reanimate from './Reanimate'
-import config from './config'
 
 class Animated extends Component {
   constructor(props) {
     super(props);
+
+    this.state = {
+      isMounted: true
+    }
   }
-  
+
+  unmount = () => {
+    console.log('unmounting');
+    this.setState({ isMounted: false })
+  };
+
   render() {
-     
-    const style = {
-      backgroundColor: 'red',
-    };
+
+    // const style = {
+    //   backgroundColor: 'red',
+    // };
 
     const animations = {
       height: {
@@ -20,27 +28,16 @@ class Animated extends Component {
         to: 100,
         type: 'ease-in',
       },
-      opacity: {     
+      opacity: {
         to: 1,
         type: 'ease-in-out',
       },
-      // top: {
-      //   to: '25%',
-      //   speed: 3000,
-      //   type: 'linear'
+      // paddingLeft: {
+      //   from: 1,
+      //   to: 1000,
+      //   speed: 10000,
+      //   type: 'ease-in'
       // },
-      // transform: {
-      //   from: 'scale(10) rotate(90deg)',
-      //   to: 'scale(0.3) rotate(280deg)',
-      //   speed: 5000,
-      //   type: 'linear'
-      // },
-      paddingLeft: {
-        from: 1,
-        to: 1000,
-        speed: 10000,
-        type: 'ease-in'
-      },
       backgroundColor: {
         from: 'gray',
         to: 'white',
@@ -61,20 +58,18 @@ class Animated extends Component {
         to: 'blue',
         type: 'linear'
       }
-    } 
+    }
 
     const arrays = ['asd', 'asad', 'asdasdasd', 'asdasdasdasd', 'asdasdasdasd', 'sadasdasdasd']
- 
+
     return (
-      
-       
-        <Reanimate animations={animations} globalSpeed={1111} interval={1}> 
+      <Reanimate animations={animations} isMounted={this.state.isMounted} globalSpeed={1111} interval={1}>
         {arrays.map(text => {
-          return  <div>{text}</div>  
+          return <div onClick={this.unmount}>{text}</div>
         })}
-        </Reanimate>
-           
-        
+      </Reanimate>
+
+
     );
   }
 }
