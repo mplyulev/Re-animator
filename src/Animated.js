@@ -46,7 +46,8 @@ class Animated extends Component {
       border: {
         from: '1px solid white',
         to: '5px dashed green',
-        type: 'linear'
+        type: 'linear',
+        speed: 5000
       },
       fontSize: {
         from: 200,
@@ -63,7 +64,7 @@ class Animated extends Component {
     const arrays = ['asd', 'asad', 'asdasdasd', 'asdasdasdasd', 'asdasdasdasd', 'sadasdasdasd']
 
     return (
-      <Reanimate animations={animations} isMounted={this.state.isMounted} globalSpeed={1111} interval={1}>
+      <Reanimate animations={animations} isMounted={this.state.isMounted} globalSpeed={10000} interval={1}>
         {arrays.map(text => {
           return <div onClick={this.unmount}>{text}</div>
         })}

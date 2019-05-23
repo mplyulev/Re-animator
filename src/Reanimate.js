@@ -17,6 +17,7 @@ class Reanimate extends Component {
     let { animations, globalSpeed, interval } = this.props;
     const style = {};
     style.transition = ''
+    let lowestSpeed = 0;
 
     Object.entries(animations).map(([key, value], index) => {
       if (typeof value.from !== 'undefined') {
@@ -34,6 +35,9 @@ class Reanimate extends Component {
         });
       }
 
+      if (value.speed > lowestSpeed) {
+        lowestSpeed = value.speed;
+      }
       style.transition += `${cssName || key} ${(value.speed || globalSpeed) / 1000}s ${value.type}${index !== Object.entries(animations).length - 1 ? ', ' : ''}`;
     });
 
@@ -49,11 +53,14 @@ class Reanimate extends Component {
     let children = [];
     let childrenStyles = [];
 
+    if (lowestSpeed < globalSpeed) {
+      lowestSpeed = globalSpeed;
+    }
+
     if (!isMounting) {
       setTimeout(() => {
         this.setState({ unmountChildren: true });
-        console.log('unmounting', interval, interval * this.props.children.length)
-      }, interval * (this.props.children.length - 1) * 100);
+      }, lowestSpeed + 50);
     }
 
 
