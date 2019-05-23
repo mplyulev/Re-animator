@@ -65,6 +65,7 @@ class Reanimate extends Component {
 
 
     this.props.children.map((child, index) => {
+      console.log(child);
       setTimeout(() => {
         childrenStyles.push(style)
         children.push(child);
@@ -89,10 +90,12 @@ class Reanimate extends Component {
 
   render() {
     const children = React.Children.map(this.state.children, (child, index) => {
-      return React.cloneElement(child, {
+      const childClone = React.cloneElement(child, {
         ...child.props,
         style: { ...this.state.childrenStyles[index] }
       });
+
+      return childClone
     });
 
     return (
