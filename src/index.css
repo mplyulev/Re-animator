@@ -3,9 +3,7 @@
    width: 100vw;
  }
 
-.animated-element {
+.animated {
   position: relative;
-  height: 200px;
-  overflow:hidden;
-  background-color: red;
+  
 }
