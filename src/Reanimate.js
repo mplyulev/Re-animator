@@ -13,7 +13,8 @@ class Reanimate extends Component {
     }
   }
 
-  setStylesProps = (animations, currentStyle) => {
+  setStylesProps = (animations, currentStyle, isMounting) => {
+    ;
     let style = {
       transition: ''
     };
@@ -40,6 +41,14 @@ class Reanimate extends Component {
       if (value.speed > lowestSpeed) {
         lowestSpeed = value.speed;
       }
+      if (!isMounting) {
+        if (value.type === 'ease-in') {
+          value.type = 'ease-out';
+        } else if (value.type === 'ease-out') {
+          value.type = 'ease-in';
+        }
+      }
+
       style.transition += `${cssName || key} ${(value.speed || globalSpeed) / 1000}s ${value.type}${index !== Object.entries(animations).length - 1 ? ', ' : ''}`;
     });
 
@@ -49,10 +58,9 @@ class Reanimate extends Component {
   animate = (isMounting) => {
     let { animations, globalSpeed, interval } = this.props;
     let animatedElements = [];
-    let styles = [];
+    let currentStyles = [];
     let lowestSpeed = 0;
     let style;
-
 
     if (!isMounting) {
       animatedElements = document.getElementsByClassName('animated');
@@ -60,12 +68,12 @@ class Reanimate extends Component {
       Array.from(animatedElements).forEach((element) => {
         const currentStyle = window.getComputedStyle(element);
 
-        styles.push(this.setStylesProps(animations, currentStyle));
+        currentStyles.push(this.setStylesProps(animations, currentStyle, isMounting));
       });
     }
 
-    style = this.setStylesProps(animations);
-    this.setState({ styles });
+    style = this.setStylesProps(animations, null, isMounting);
+    this.setState({ currentStyles });
     const newStyle = Object.assign({}, style);
     Object.entries(animations).map(([key, value]) => {
       let endValue = isMounting ? value.to : value.from;
@@ -77,23 +85,18 @@ class Reanimate extends Component {
     if (lowestSpeed < globalSpeed) {
       lowestSpeed = globalSpeed;
     }
-    console.log('speed', lowestSpeed);
+
     if (!isMounting) {
       this.requestTimeout(() => {
         this.setState({ unmountChildren: true });
       }, lowestSpeed);
     }
 
-
-
-
-
     this.props.children.map((child, index) => {
       this.requestTimeout(() => {
         childrenStyles.push(style);
         children.push(child);
-        this.setState({ children, childrenStyles: isMounting ? childrenStyles : styles });
-        console.log(styles);
+        this.setState({ children, childrenStyles: isMounting ? childrenStyles : currentStyles });
         this.requestTimeout(() => {
           childrenStyles[index] = newStyle;
           this.setState({ childrenStyles });
@@ -146,6 +149,7 @@ class Reanimate extends Component {
   }
 
   render() {
+    console.log('updating');
     const children = React.Children.map(this.state.children, (child, index) => {
       const childClone = React.cloneElement(child, {
         ...child.props,
