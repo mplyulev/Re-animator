@@ -2,169 +2,221 @@ import React, { Component, Fragment } from 'react';
 import './Reanimate.css';
 
 class Reanimate extends Component {
-  constructor(props) {
-    super(props);
+    constructor(props) {
+        super(props);
 
-    this.state = {
-      styles: [],
-      children: [],
-      childrenStyles: [],
-      unmountChildren: false
+        this.state = {
+            children: [],
+            style: {},
+            animatedChildrenKeys: [],
+            currentStyle: {}
+        }
     }
-  }
 
-  setStylesProps = (animations, currentStyle, isMounting) => {
-    ;
-    let style = {
-      transition: ''
-    };
-
-    const { globalSpeed } = this.props;
-
-    let lowestSpeed = 0;
-
-    Object.entries(animations).map(([key, value], index) => {
-      if (typeof value.from !== 'undefined') {
-        style[key] = !currentStyle ? value.from : currentStyle[key];
-      }
-      let cssName = ''
-      if (key !== key.toLowerCase()) {
+    constructCSSPropName = (key) => {
+        let cssPropName = '';
         const keys = key.match(/([A-Z]?[^A-Z]*)/g).slice(0, -1);
         keys.forEach((keyPart, index) => {
-          cssName += keyPart.toLowerCase();
-          if (index !== keys.length - 1) {
-            cssName += '-';
-          }
+            cssPropName += keyPart.toLowerCase();
+            if (index !== keys.length - 1) {
+                cssPropName += '-';
+            }
         });
-      }
 
-      if (value.speed > lowestSpeed) {
-        lowestSpeed = value.speed;
-      }
-      if (!isMounting) {
-        if (value.type === 'ease-in') {
-          value.type = 'ease-out';
-        } else if (value.type === 'ease-out') {
-          value.type = 'ease-in';
+        return cssPropName;
+    }
+
+    setStylesProps = (animations, isUnmounting) => {
+        let style = {
+            transition: ''
+        };
+
+        let currentStyle = {
+            transition: ''
         }
-      }
+        const { globalSpeed, exitAnimations } = this.props;
+        Object.entries(isUnmounting ? exitAnimations || animations : animations).map(([cssPropName, value], index) => {
+            if (isUnmounting) {
+                style[cssPropName] = exitAnimations !== undefined ? value.from : value.to;
+            }
 
-      style.transition += `${cssName || key} ${(value.speed || globalSpeed) / 1000}s ${value.type}${index !== Object.entries(animations).length - 1 ? ', ' : ''}`;
-    });
+            if (!isUnmounting) {
+                style[cssPropName] = value.from;
+            }
 
-    return style;
-  }
+            currentStyle[cssPropName] = value.to;
 
-  animate = (isMounting) => {
-    let { animations, globalSpeed, interval } = this.props;
-    let animatedElements = [];
-    let currentStyles = [];
-    let lowestSpeed = 0;
-    let style;
 
-    if (!isMounting) {
-      animatedElements = document.getElementsByClassName('animated');
+            if (cssPropName !== cssPropName.toLowerCase()) {
+                cssPropName = this.constructCSSPropName(cssPropName);
+            }
 
-      Array.from(animatedElements).forEach((element) => {
-        const currentStyle = window.getComputedStyle(element);
+            style.transition += `${cssPropName} ${(value.speed || globalSpeed) / 1000}s ${value.type}${index !== Object.entries(animations).length - 1 ? ', ' : ''}`;
+            currentStyle.transition = style.transition;
+        });
 
-        currentStyles.push(this.setStylesProps(animations, currentStyle, isMounting));
-      });
+        this.setState({ currentStyle });
+        return style;
     }
 
-    style = this.setStylesProps(animations, null, isMounting);
-    this.setState({ currentStyles });
-    const newStyle = Object.assign({}, style);
-    Object.entries(animations).map(([key, value]) => {
-      let endValue = isMounting ? value.to : value.from;
-      newStyle[key] = endValue;
-    });
-    let children = [];
-    let childrenStyles = [];
+    animate = (isUnmounting) => {
+        const { exitAnimations, animations, globalSpeed, children } = this.props;
+        let style;
 
-    if (lowestSpeed < globalSpeed) {
-      lowestSpeed = globalSpeed;
-    }
+        if (isUnmounting && exitAnimations !== undefined) {
+            style = this.setStylesProps(exitAnimations, false);
+        } else if (isUnmounting && exitAnimations === undefined) {
+            style = this.setStylesProps(animations, true);
+        } else if (!isUnmounting) {
+            style = this.setStylesProps(animations, false);
+        }
 
-    if (!isMounting) {
-      this.requestTimeout(() => {
-        this.setState({ unmountChildren: true });
-      }, lowestSpeed);
-    }
+        const newStyle = Object.assign({}, style);
+        let lowestSpeed = 0;
+        Object.entries(!isUnmounting ? animations : exitAnimations || animations).map(([key, value]) => {
+            newStyle[key] = value.to;
+            if (!isUnmounting || (isUnmounting && exitAnimations !== undefined)) {
+                newStyle[key] = value.to;
+            } else if (isUnmounting && exitAnimations === undefined) {
+                newStyle[key] = value.from;
+            }
+        });
 
-    this.props.children.map((child, index) => {
-      this.requestTimeout(() => {
-        childrenStyles.push(style);
-        children.push(child);
-        this.setState({ children, childrenStyles: isMounting ? childrenStyles : currentStyles });
+        if (lowestSpeed < globalSpeed) {
+            lowestSpeed = globalSpeed;
+        }
+
         this.requestTimeout(() => {
-          childrenStyles[index] = newStyle;
-          this.setState({ childrenStyles });
-        }, 0)
-      }, interval * index);
-    });
-  }
+            if (!isUnmounting) {
+                this.setState({ children });
+            }
 
-  requestTimeout = (fn, delay) => {
-    if (!window.requestAnimationFrame &&
-      !window.webkitRequestAnimationFrame &&
-      !(window.mozRequestAnimationFrame && window.mozCancelRequestAnimationFrame) && // Firefox 5 ships without cancel support
-      !window.oRequestAnimationFrame &&
-      !window.msRequestAnimationFrame)
-      return window.setTimeout(fn, delay);
+            this.setState({ style });
+            this.requestTimeout(() => {
+                this.setState({ style: newStyle });
+            }, 0)
 
-    var start = new Date().getTime(),
-      handle = new Object();
+            if (isUnmounting) {
+                this.requestTimeout(() => {
+                    this.setState({ children });
+                }, lowestSpeed)
+            }
+        }, 0);
+    }
 
-    function loop() {
-      var current = new Date().getTime(),
-        delta = current - start;
+    requestTimeout = (fn, delay) => {
+        if (!window.requestAnimationFrame &&
+            !window.webkitRequestAnimationFrame &&
+            !(window.mozRequestAnimationFrame && window.mozCancelRequestAnimationFrame) && // Firefox 5 ships without cancel support
+            !window.oRequestAnimationFrame &&
+            !window.msRequestAnimationFrame)
+            return window.setTimeout(fn, delay);
 
-      delta >= delay ? fn.call() : handle.value = window.requestAnimFrame(loop);
+        const start = new Date().getTime(),
+            handle = new Object();
+
+        const loop = () => {
+            var current = new Date().getTime(),
+                delta = current - start;
+
+            delta >= delay ? fn.call() : handle.value = window.requestAnimFrame(loop);
+        };
+
+        handle.value = window.requestAnimFrame(loop);
+        return handle;
     };
 
-    handle.value = window.requestAnimFrame(loop);
-    return handle;
-  };
+    findRemovedChildrenKeys = (newChildren, oldChildren) => {
+        const animatedChildrenKeys = [];
+        oldChildren.forEach(oldChild => {
+            if (!newChildren.find(newChild => oldChild.key === newChild.key)) {
+                animatedChildrenKeys.push(oldChild.key)
+            }
+        });
 
-
-  componentDidMount() {
-    window.requestAnimFrame = (function () {
-      return window.requestAnimationFrame ||
-        window.webkitRequestAnimationFrame ||
-        window.mozRequestAnimationFrame ||
-        window.oRequestAnimationFrame ||
-        window.msRequestAnimationFrame ||
-        function (/* function */ callback, /* DOMElement */ element) {
-          window.setTimeout(callback, 1000 / 60);
-        };
-    })();
-    this.animate(true)
-  };
-
-  componentDidUpdate(prevProps, prevState, snapshot) {
-    if (prevProps.isMounted !== this.props.isMounted && !this.props.isMounted) {
-      this.animate(false);
+        return animatedChildrenKeys;
     }
-  }
 
-  render() {
-    console.log('updating');
-    const children = React.Children.map(this.state.children, (child, index) => {
-      const childClone = React.cloneElement(child, {
-        ...child.props,
-        style: { ...this.state.childrenStyles[index] }
-      });
+    findAddedChildrenKeys = (newChildren, oldChildren) => {
+        const animatedChildrenKeys = [];
 
-      return childClone
-    });
+        newChildren.forEach(newChild => {
+            if (!oldChildren.find(oldChild => newChild.key === oldChild.key)) {
+                animatedChildrenKeys.push(newChild.key)
+            }
+        });
 
-    return (
-      <Fragment>
-        {!this.state.unmountChildren ? children : null}
-      </Fragment>
-    );
-  }
+        return animatedChildrenKeys;
+    }
+
+    componentWillReceiveProps(nextProps, nextState) {
+        const newChildren = React.Children.toArray(nextProps.children);
+        const oldChildren = React.Children.toArray(this.props.children);
+
+        if (newChildren.length !== oldChildren.length && newChildren.length < oldChildren.length) {
+            const animatedChildrenKeys = this.findRemovedChildrenKeys(newChildren, oldChildren);
+            this.setState({ animatedChildrenKeys }, () => {
+                this.animate(true);
+            })
+        }
+
+        if (newChildren.length !== oldChildren.length && newChildren.length > oldChildren.length) {
+            const animatedChildrenKeys = this.findAddedChildrenKeys(newChildren, oldChildren);
+            this.setState({ animatedChildrenKeys }, () => {
+                this.animate(false);
+            })
+        }
+    }
+
+    addRequestAnimFramePolyfill = () => {
+        window.requestAnimFrame = (() => {
+            return window.requestAnimationFrame ||
+                window.webkitRequestAnimationFrame ||
+                window.mozRequestAnimationFrame ||
+                window.oRequestAnimationFrame ||
+                window.msRequestAnimationFrame ||
+                function (/* function */ callback, /* DOMElement */ element) {
+                    window.setTimeout(callback, 1000 / 60);
+                };
+        })();
+    }
+
+    shouldComponentUpdate(nextProps, nextState) {
+        if (nextState.children.length !== this.state.children.length || this.state.style !== nextState.style) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    componentDidMount() {
+        this.addRequestAnimFramePolyfill();
+        const children = React.Children.toArray(this.props.children);
+        const animatedChildrenKeys = this.findAddedChildrenKeys(children, []);
+        this.setState({ animatedChildrenKeys }, () => {
+            animatedChildrenKeys && this.animate(false);
+        })
+    };
+
+    render() {
+        const { style, children, animatedChildrenKeys, currentStyle } = this.state;
+
+        const childrenClone = React.Children.map(children, (child) => {
+            const childStyle = animatedChildrenKeys.includes(`.$${child.key}`) ? style : currentStyle;
+            const childClone = React.cloneElement(child, {
+                ...child.props,
+                style: childStyle
+            });
+
+            return childClone
+        });
+
+        return (
+            <Fragment>
+                {childrenClone}
+            </Fragment >
+        );
+    }
 }
 
 export default Reanimate;

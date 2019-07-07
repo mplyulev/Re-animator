@@ -3,42 +3,49 @@ import './Reanimate.css';
 import Reanimate from './Reanimate'
 
 class Animated extends Component {
-  constructor(props) {
-    super(props);
+    constructor(props) {
+        super(props);
 
-    this.state = {
-      isMounted: true,
-      array: ['asd', 'asad', 'asdasdasd', 'asdasdasdasd', 'asdasdasdasd', 'sadasdasdasd']
+        this.state = {
+            isMounted: true,
+            array: [{ text: 'asd', id: Math.random() }, { text: 'asd', id: Math.random() }, { text: 'asd', id: Math.random() }, { text: 'asd', id: Math.random() }]
+        }
     }
-  }
 
-  unmount = () => {
-    const array = this.state.array;
-    array.push('test');
+    remove = (index) => {
+        let { array } = this.state;
+        array.splice(index, 1);
+        this.setState({ array });
+    };
 
-    this.setState({ array, isMounted: false });
-  };
-
-  render() {
-    const animations = {
-      left: {
-        from: 0,
-        to: 300,
-        type: 'ease-in',
-      }
+    addElement = () => {
+        let { array } = this.state;
+        array.push({ text: 'test', id: Math.random() });
+        this.setState({ array });
     }
-    console.log(this.state.array);
 
-    return (
-      <Reanimate animations={animations} isMounted={this.state.isMounted} globalSpeed={200} interval={111}>
-        {this.state.array.map((text, index) => {
-          return <div className={`animated animated-${index}`} key={index} onClick={() => this.unmount()}>{text}</div>
-        })}
-      </Reanimate>
+    render() {
+        const animations = {
+            left: {
+                from: 0,
+                to: 300,
+                type: 'linear',
+                speed: 1000
+            }
+        }
+        console.log(this.state.array);
+        return (
+            <div>
+                <button onClick={this.addElement}>Add Element</button>
+                <Reanimate animations={animations} isMounted={this.state.isMounted} globalSpeed={1000} interval={0}>
+                    {this.state.array.map((item, index) => {
+                        return <div className={`animated`} key={item.id} onClick={() => this.remove(index)}>{item.text}</div>
+                    })}
+                </Reanimate>
+            </div>
 
-
-    );
-  }
+        );
+    }
 }
 
 export default Animated;
