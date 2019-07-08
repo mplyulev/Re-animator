@@ -33,7 +33,7 @@ class Animated extends Component {
                 speed: 1000
             }
         }
-        console.log(this.state.array);
+
         return (
             <div>
                 <button onClick={this.addElement}>Add Element</button>
