@@ -64,15 +64,6 @@ class Reanimate extends Component {
         let { elementsWithPendingAnimation } = this.state;
         const { exitAnimations, animations, globalSpeed, children } = this.props;
         let style;
-        const previousChildren = this.state.children;
-
-        if (Object.values(elementsWithPendingAnimation).length !== 0 && !isUnmounting) {
-            children.forEach(child => {
-                if (animatedChildrenKeys.includes(`.$${child.key}`)) {
-                    previousChildren.push(child);
-                }
-            });
-        }
 
         if (isUnmounting && exitAnimations !== undefined) {
             style = this.setStylesProps(exitAnimations, false);
@@ -96,6 +87,14 @@ class Reanimate extends Component {
         if (lowestSpeed < globalSpeed) {
             lowestSpeed = globalSpeed;
         }
+
+        let previousChildren = this.state.children;
+
+        this.props.children.forEach(child => {
+            if (animatedChildrenKeys.includes(`.$${child.key}`)) {
+                previousChildren.push(child);
+            }
+        });
 
         this.requestTimeout(() => {
             this.setState({ style });
