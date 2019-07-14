@@ -105,19 +105,19 @@ class Reanimate extends Component {
                     elementsWithPendingAnimation.push({ key, newStyle });
                 });
 
-                this.setState({ elementsWithPendingAnimation });
-                this.requestTimeout(() => {
-                    const children = this.state.children;
+                let children = this.state.children;
 
-                    this.state.children.forEach(child => {
+                this.state.children.forEach((child, index) => {
+                    if (animatedChildrenKeys.includes(`.$${child.key}`)) {
                         const test = document.getElementById(child.key);
                         test.addEventListener('transitionend', () => {
                             test.style.display = 'none';
+                            elementsWithPendingAnimation = elementsWithPendingAnimation.filter((element) => !animatedChildrenKeys.includes(element.key));
+                            children.splice(index, 1);
+                            this.setState({ elementsWithPendingAnimation, children });
                         });
-                    })
-                    elementsWithPendingAnimation = elementsWithPendingAnimation.filter((element) => !animatedChildrenKeys.includes(element.key));
-                    this.setState({ children, elementsWithPendingAnimation });
-                }, lowestSpeed);
+                    }
+                });
             }
 
             this.requestTimeout(() => {
@@ -168,7 +168,7 @@ class Reanimate extends Component {
 
         newChildren.forEach(newChild => {
             if (!oldChildren.find(oldChild => newChild.key === oldChild.key)) {
-                animatedChildrenKeys.push(newChild.key)
+                animatedChildrenKeys.push(newChild.key);
                 animatedChildren.push(newChild);
             }
         });
@@ -237,7 +237,6 @@ class Reanimate extends Component {
             const childClone = React.cloneElement(child, {
                 ...child.props,
                 id: child.key,
-                // className: child.key,
                 index,
                 style: childStyle
             });
