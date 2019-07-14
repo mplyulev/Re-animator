@@ -107,7 +107,14 @@ class Reanimate extends Component {
 
                 this.setState({ elementsWithPendingAnimation });
                 this.requestTimeout(() => {
-                    const children = this.props.children;
+                    const children = this.state.children;
+
+                    this.state.children.forEach(child => {
+                        const test = document.getElementById(child.key);
+                        test.addEventListener('transitionend', () => {
+                            test.style.display = 'none';
+                        });
+                    })
                     elementsWithPendingAnimation = elementsWithPendingAnimation.filter((element) => !animatedChildrenKeys.includes(element.key));
                     this.setState({ children, elementsWithPendingAnimation });
                 }, lowestSpeed);
@@ -230,6 +237,7 @@ class Reanimate extends Component {
             const childClone = React.cloneElement(child, {
                 ...child.props,
                 id: child.key,
+                // className: child.key,
                 index,
                 style: childStyle
             });
