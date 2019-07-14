@@ -7,3 +7,11 @@
   position: relative;
   
 }
+
+.day {
+    display: flex;
+}
+
+.equation {
+    margin: 20px;
+}
