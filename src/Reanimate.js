@@ -20,6 +20,8 @@ class Reanimate extends Component {
         const y = Math.floor(Math.random() * availableNumbers) + 1;
         let finalResult;
 
+
+
         switch (operationType) {
             case ADDITION:
                 finalResult = x + y
@@ -36,9 +38,27 @@ class Reanimate extends Component {
             default:
         }
 
+        let areEquationsTheSame = false;
+        let isDivisionWithRemain = false;
+        let isResultAboveTreshold = false;
+        let isSomeOfTheOprandsTheSame = false;
         let isInvalid = false;
 
-        isInvalid = this.state.days.some(day => {
+        if (x === y) {
+            isInvalid = true;
+        }
+
+        if (operationType === MULTIPLICATION || operationType === DIVISION) {
+            if (x === 1 || y === 1) {
+                isInvalid = true;
+            }
+        }
+
+        if (x === finalResult || y === finalResult) {
+            isInvalid = true;
+        }
+
+        areEquationsTheSame = this.state.days.some(day => {
             day[operationType].some(equation => {
                 const { operand1, operand2 } = equation;
                 return (x === operand1 || x === operand2) && (y === operand1 || y === operand2);
@@ -46,29 +66,25 @@ class Reanimate extends Component {
         });
 
         if (operationType === DIVISION && finalResult % 1 !== 0) {
-            return this.generateEquation(day, availableNumbers, operationType);
+            isDivisionWithRemain = true;
         }
 
-        isInvalid = day[operationType].length > 0 && day[operationType].some(equation => {
-            const { operand1, operand2, result } = equation;
-            return operand1 === x || operand1 === y || operand2 === x || operand2 === y || result === finalResult
-        });
-
-        if (finalResult > availableNumbers || x === y) {
-            isInvalid = true;
+        if ((operationType === MULTIPLICATION || operationType === ADDITION) && finalResult > availableNumbers) {
+            isResultAboveTreshold = true;
         }
 
+        const operationTypes = Object.values(day);
 
-        if (operationType === SUBTRACTION) {
-            day[ADDITION].forEach(equation => {
+        isSomeOfTheOprandsTheSame = operationTypes.some(operationType => {
+            return operationType.some(equation => {
                 const { operand1, operand2, result } = equation;
-                if (operand1 === x || operand1 === y || operand2 === x || operand2 === y) {
-                    isInvalid = true;
-                }
-            });
-        }
 
-        if (!isInvalid) {
+                return x === operand1 || x === operand2 || x === result
+                    || y === operand1 || y === operand2 || y === result || finalResult === result || finalResult === operand1 || finalResult === operand2
+            })
+        })
+
+        if (!isInvalid && !isSomeOfTheOprandsTheSame && !isResultAboveTreshold && !isDivisionWithRemain && !areEquationsTheSame) {
             return { operand1: x, operand2: y, result: finalResult }
         } else {
             return this.generateEquation(day, availableNumbers, operationType);
@@ -80,20 +96,30 @@ class Reanimate extends Component {
     }
 
     randomize = (days) => {
-        let availableNumbers = 40;
+        let availableNumbers = 60;
         days.forEach((day, index) => {
+            console.log(index);
             availableNumbers += 2;
             for (let i = 0; i < EQUATIONS_PER_DAY; i++) {
                 let addition = this.generateEquation(day, availableNumbers, ADDITION);
-                let subtraction = this.generateEquation(day, availableNumbers, SUBTRACTION);
-                let multiplication = this.generateEquation(day, availableNumbers, MULTIPLICATION);
-                let division = this.generateEquation(day, availableNumbers, DIVISION);
-
                 day[ADDITION].push(addition);
-                day[SUBTRACTION].push(subtraction);
-                day[MULTIPLICATION].push(multiplication);
-                day[DIVISION].push(division);
             }
+            for (let i = 0; i < EQUATIONS_PER_DAY; i++) {
+                let subtraction = this.generateEquation(day, availableNumbers, SUBTRACTION);
+                day[SUBTRACTION].push(subtraction);
+            }
+            for (let i = 0; i < EQUATIONS_PER_DAY; i++) {
+                let multiplication = this.generateEquation(day, availableNumbers, MULTIPLICATION);
+                day[MULTIPLICATION].push(multiplication);
+            }
+            if (availableNumbers > 80) {
+                console.log('division');
+                for (let i = 0; i < EQUATIONS_PER_DAY; i++) {
+                    let division = this.generateEquation(day, availableNumbers, DIVISION);
+                    day[DIVISION].push(division);
+                }
+            }
+
         });
 
         this.setState({ days })
@@ -102,8 +128,8 @@ class Reanimate extends Component {
     componentDidMount() {
         const days = []
 
-        for (let i = 1; i <= 30; i++) {
-            const day = { number: i, add: [], sub: [], div: [], multiply: [] }
+        for (let i = 1; i <= 20; i++) {
+            const day = { add: [], sub: [], div: [], multiply: [] }
             days.push(day);
         }
         this.setState({ days: days }, () => {
@@ -116,9 +142,9 @@ class Reanimate extends Component {
 
         return (
             <Fragment>
-                {days.map(day => (
+                {days.map((day, index) => (
                     <div className="day">
-                        <h5>DAY {day.number}</h5>
+                        <h5>DAY {index + 1}</h5>
                         <div className="equation">
                             <h6>ADDITION</h6>
                             {day.add.map(equation => (
