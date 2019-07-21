@@ -20,8 +20,6 @@ class Reanimate extends Component {
         const y = Math.floor(Math.random() * availableNumbers) + 1;
         let finalResult;
 
-
-
         switch (operationType) {
             case ADDITION:
                 finalResult = x + y
@@ -112,14 +110,14 @@ class Reanimate extends Component {
                 let multiplication = this.generateEquation(day, availableNumbers, MULTIPLICATION);
                 day[MULTIPLICATION].push(multiplication);
             }
-            if (availableNumbers > 80) {
-                console.log('division');
-                for (let i = 0; i < EQUATIONS_PER_DAY; i++) {
-                    let division = this.generateEquation(day, availableNumbers, DIVISION);
-                    day[DIVISION].push(division);
-                }
-            }
 
+                if (availableNumbers > 80) {
+                    console.log('division');
+                    for (let i = 0; i < EQUATIONS_PER_DAY; i++) {
+                        let division = this.generateEquation(day, availableNumbers, DIVISION);
+                        day[DIVISION].push(division);
+                    }
+                }
         });
 
         this.setState({ days })
