@@ -12,9 +12,10 @@ class Animated extends Component {
         }
     }
 
-    remove = (index) => {
+    remove = (id) => {
         let { array } = this.state;
-        array.splice(index, 1);
+        // array.splice(index, 1);
+        array = array.filter(item => item.id !== id);
         this.setState({ array });
     };
 
@@ -39,7 +40,7 @@ class Animated extends Component {
                 <button onClick={this.addElement}>Add Element</button>
                 <Reanimate animations={animations} isMounted={this.state.isMounted} globalSpeed={1000} interval={0}>
                     {this.state.array.map((item, index) => {
-                        return <div className={`animated`} key={item.id} onClick={() => this.remove(index)}>{item.text}</div>
+                        return <div className={`animated`} key={item.id} onClick={() => this.remove(item.id)}>{item.text}</div>
                     })}
                 </Reanimate>
             </div>
