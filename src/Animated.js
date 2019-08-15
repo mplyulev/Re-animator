@@ -7,6 +7,7 @@ class Animated extends Component {
         super(props);
 
         this.state = {
+            show2: true,
             isMounted: true,
             array: [{ text: 'asd', id: Math.random() }, { text: 'asd', id: Math.random() }, { text: 'asd', id: Math.random() }, { text: 'asd', id: Math.random() }]
         }
@@ -34,15 +35,25 @@ class Animated extends Component {
                 speed: 1000
             }
         }
+        const animations2 = {
+            left: {
+                from: 300,
+                to: 0,
+                type: 'linear',
+                speed: 1000
+            }
+        }
 
         return (
             <div>
                 <button onClick={this.addElement}>Add Element</button>
                 <Reanimate animations={animations} isMounted={this.state.isMounted} globalSpeed={1000} interval={0}>
-                    {this.state.array.map((item, index) => {
-                        return <div className={`animated`} key={item.id} onClick={() => this.remove(item.id)}>{item.text}</div>
-                    })}
+                    <div className={`animated`} key='asd' >asd</div>
                 </Reanimate>
+                <Reanimate animations={animations2} isMounted={this.state.isMounted} globalSpeed={1000} interval={0}>
+                    {this.state.show2 && <div className={`animated`} key='asd2' onClick={() => this.setState({ show2: !this.state.show2 })}>asd2</div>}
+                </Reanimate>
+
             </div>
 
         );

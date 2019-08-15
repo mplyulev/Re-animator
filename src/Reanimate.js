@@ -90,7 +90,7 @@ class Reanimate extends Component {
 
         let previousChildren = this.state.children;
 
-        this.props.children.forEach(child => {
+        React.Children.toArray(children).forEach(child => {
             if (animatedChildrenKeys.includes(`.$${child.key}`)) {
                 previousChildren.push(child);
             }
@@ -105,15 +105,16 @@ class Reanimate extends Component {
                     elementsWithPendingAnimation.push({ key, newStyle });
                 });
 
-                let children = this.state.children;
-
-                this.state.children.forEach((child, index) => {
+                let children = React.Children.toArray(this.state.children);
+                console.log('asd2 ', children);
+                children.forEach((child, index) => {
                     if (animatedChildrenKeys.includes(`.$${child.key}`)) {
                         const test = document.getElementById(child.key);
                         test.addEventListener('transitionend', () => {
                             test.style.display = 'none';
                             elementsWithPendingAnimation = elementsWithPendingAnimation.filter((element) => !animatedChildrenKeys.includes(element.key));
                             children.splice(index, 1);
+                            console.log('asd', children);
                             this.setState({ elementsWithPendingAnimation, children });
                         });
                     }
