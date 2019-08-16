@@ -63,18 +63,28 @@ class Reanimate extends Component {
 
     animate = (isUnmounting, animatedChildrenKeys) => {
         let { elementsWithPendingAnimation, animations } = this.state;
-        const { exitAnimations, globalSpeed, children } = this.props;
+        const { exitAnimations, globalSpeed, children, dontAnimateOnMount, dontAnimateOnUnmount } = this.props;
         let style;
-        console.log('asd', animations);
 
-        if (isUnmounting && exitAnimations !== undefined) {
+        if (isUnmounting && exitAnimations !== undefined && !dontAnimateOnUnmount) {
             style = this.setStylesProps(exitAnimations, false);
-        } else if (isUnmounting && exitAnimations === undefined) {
+        } else if (isUnmounting && exitAnimations === undefined && !dontAnimateOnUnmount) {
             style = this.setStylesProps(animations, true);
-        } else if (!isUnmounting) {
+        } else if (!isUnmounting && !dontAnimateOnMount) {
             style = this.setStylesProps(animations, false);
+        } else if (isUnmounting && dontAnimateOnUnmount) {
+            const children = React.Children.toArray(this.state.children);
+            children.forEach((child, index) => {
+                if (animatedChildrenKeys.includes(child.key)) {
+                    children.splice(index, 1);
+                    this.setState({ elementsWithPendingAnimation, children });
+                }
+            });
+
+            return;
         }
-        console.log('asd style', style);
+
+
         const newStyle = Object.assign({}, style);
         let lowestSpeed = 0;
         Object.entries(!isUnmounting ? animations : exitAnimations || animations).map(([key, value]) => {
@@ -89,7 +99,6 @@ class Reanimate extends Component {
         if (lowestSpeed < globalSpeed) {
             lowestSpeed = globalSpeed;
         }
-
         let previousChildren = this.state.children;
 
         React.Children.toArray(children).forEach(child => {
@@ -120,7 +129,7 @@ class Reanimate extends Component {
                     }
                 });
             }
-            console.log('asd new style', newStyle);
+
             this.requestTimeout(() => {
                 this.setState({ style: newStyle });
             }, 0)
@@ -238,6 +247,10 @@ class Reanimate extends Component {
     render() {
         const { style, children, animatedChildrenKeys, currentStyle, elementsWithPendingAnimation } = this.state;
         const childrenClone = React.Children.map(children, (child, index) => {
+            if (!child) {
+                return null;
+            }
+
             let childStyle = animatedChildrenKeys.includes(`.$${child.key}`) ? style : currentStyle;
             const elementWithPendingAnimation = elementsWithPendingAnimation.find(element => element.key === `.$${child.key}`);
             if (elementWithPendingAnimation) {

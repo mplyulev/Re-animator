@@ -60,13 +60,17 @@ class Animated extends Component {
     }
 
     render() {
-        const { animations, animations2 } = this.state;
-        console.log('asd', animations, animations2);
+        const { animations, animations2, show1, show2 } = this.state;
+        console.log('asd', animations, animations2, show1);
         return (
             <div>
                 <button onClick={this.addElement}>Add Element</button>
-                <Reanimate animations={animations} isMounted={this.state.isMounted} globalSpeed={1000} interval={111}>
-                    {this.state.show1 && <div className={`animated`} key='asd' >asd</div>}
+                <Reanimate animations={animations}
+                    dontAnimateOnMount={false}
+                    dontAnimateOnUnmount={true}
+                    globalSpeed={1000}
+                    interval={111}>
+                    {this.state.show1 && <div className={`animated`} onClick={() => this.setState({ show1: !show1 })} key='asd' >asd</div>}
                 </Reanimate>
                 {/* <Reanimate animations={animations2} isMounted={this.state.isMounted} globalSpeed={1000} interval={0}>
                     {this.state.show2 && <div className={`animated`} key='asd2' onClick={() => this.setState({ show2: !this.state.show2, show1: !this.state.show1 })}>asd2</div>}
