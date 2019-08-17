@@ -13,6 +13,8 @@ class Reanimate extends Component {
             currentStyle: {},
             elementsWithPendingAnimation: []
         }
+
+        this.ref = React.createRef();
     }
 
     constructCSSPropName = (key) => {
@@ -84,7 +86,6 @@ class Reanimate extends Component {
             return;
         }
 
-
         const newStyle = Object.assign({}, style);
         let lowestSpeed = 0;
         Object.entries(!isUnmounting ? animations : exitAnimations || animations).map(([key, value]) => {
@@ -99,6 +100,7 @@ class Reanimate extends Component {
         if (lowestSpeed < globalSpeed) {
             lowestSpeed = globalSpeed;
         }
+
         let previousChildren = this.state.children;
 
         React.Children.toArray(children).forEach(child => {
@@ -270,7 +272,7 @@ class Reanimate extends Component {
         return (
             <Fragment>
                 {childrenClone}
-            </Fragment >
+            </ Fragment>
         );
     }
 }
