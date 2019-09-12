@@ -38,9 +38,9 @@ class Animated extends Component {
         return (
             <div>
                 <button onClick={this.addElement}>Add Element</button>
-                <Reanimate animations={animations} isMounted={this.state.isMounted} globalSpeed={1000} interval={0}>
+                <Reanimate animations={animations} isMounted={this.state.isMounted} noEntryAnimation={true} noExitAnimation={true} globalSpeed={1000} interval={0}>
                     {this.state.array.map((item, index) => {
-                        return <div className={`animated`} key={item.id} onClick={() => this.remove(item.id)}>{item.text}</div>
+                        return <div className={`animated`} key={item.id} onClick={() => this.remove(item.id)}>{Math.random()}</div>
                     })}
                 </Reanimate>
             </div>
