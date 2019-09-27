@@ -62,37 +62,18 @@ class Reanimate extends Component {
 
     animate = (isUnmounting, animatedChildrenKeys) => {
         let { elementsWithPendingAnimation } = this.state;
-        const { exitAnimations, animations, globalSpeed, children, noEntryAnimation, noExitAnimation } = this.props;
-        let style = {};
-        let newStyle = {};
+        const { exitAnimations, animations, globalSpeed, children } = this.props;
+        let style;
 
-        if (isUnmounting && exitAnimations !== undefined && !noExitAnimation) {
+        if (isUnmounting && exitAnimations !== undefined) {
             style = this.setStylesProps(exitAnimations, false);
-        } else if (isUnmounting && exitAnimations === undefined && !noExitAnimation) {
+        } else if (isUnmounting && exitAnimations === undefined) {
             style = this.setStylesProps(animations, true);
-        } else if (!isUnmounting && !noEntryAnimation) {
+        } else if (!isUnmounting) {
             style = this.setStylesProps(animations, false);
-        } else if (!isUnmounting && noEntryAnimation) {
-            newStyle = this.setStylesProps(animations, false);
-
-        } else if (isUnmounting && noExitAnimation) {
-            console.log('exit no animation');
-            const { children } = this.state;
-            let index;
-            console.log('asd', children);
-            children.forEach((child) => {
-                console.log('asd', animatedChildrenKeys, child.key);
-                if (animatedChildrenKeys.includes(child.key)) {
-                    index = children.findIndex(childElement => childElement.key === child.key);
-                }
-            });
-            children.splice(index, 1);
-            this.setState({ children });
-            return;
         }
 
-        // } make it happen unmount without animation  
-        newStyle = Object.assign({}, style);
+        const newStyle = Object.assign({}, style);
         let lowestSpeed = 0;
         Object.entries(!isUnmounting ? animations : exitAnimations || animations).map(([key, value]) => {
             newStyle[key] = value.to;
@@ -107,14 +88,14 @@ class Reanimate extends Component {
             lowestSpeed = globalSpeed;
         }
 
-        // let previousChildren = this.state.children;
+        let previousChildren = this.state.children;
 
-        // this.props.children.forEach(child => {
-        //     if (animatedChildrenKeys.includes(`.$${child.key}`)) {
-        //         previousChildren.push(child);
-        //     }
-        // });
-        console.log('asd', elementsWithPendingAnimation, style, newStyle);
+        this.props.children.forEach(child => {
+            if (animatedChildrenKeys.includes(`.$${child.key}`)) {
+                previousChildren.push(child);
+            }
+        });
+
         this.requestTimeout(() => {
             this.setState({ style });
             if (!isUnmounting && Object.values(elementsWithPendingAnimation).length === 0) {
@@ -127,9 +108,10 @@ class Reanimate extends Component {
                 let children = this.state.children;
 
                 this.state.children.forEach((child, index) => {
-                    if (animatedChildrenKeys.includes(child.key)) {
-                        const element = document.getElementById(child.key);
-                        element.addEventListener('transitionend', () => {
+                    if (animatedChildrenKeys.includes(`.$${child.key}`)) {
+                        const test = document.getElementById(child.key);
+                        test.addEventListener('transitionend', () => {
+                            test.style.display = 'none';
                             elementsWithPendingAnimation = elementsWithPendingAnimation.filter((element) => !animatedChildrenKeys.includes(element.key));
                             children.splice(index, 1);
                             this.setState({ elementsWithPendingAnimation, children });
@@ -195,8 +177,8 @@ class Reanimate extends Component {
     }
 
     componentWillReceiveProps(nextProps, nextState) {
-        const newChildren = nextProps.children;
-        const oldChildren = this.props.children;
+        const newChildren = React.Children.toArray(nextProps.children);
+        const oldChildren = React.Children.toArray(this.props.children);
 
         if (newChildren.length !== oldChildren.length && newChildren.length < oldChildren.length) {
             const animatedChildrenKeys = this.findRemovedChildrenKeys(newChildren, oldChildren).animatedChildrenKeys;
@@ -236,7 +218,7 @@ class Reanimate extends Component {
 
     componentDidMount() {
         this.addRequestAnimFramePolyfill();
-        const { children } = this.props;
+        const children = React.Children.toArray(this.props.children);
         const animatedChildrenKeys = this.findAddedChildrenKeys(children, []).animatedChildrenKeys;
         this.setState({ animatedChildrenKeys }, () => {
             animatedChildrenKeys && this.animate(false, animatedChildrenKeys);
@@ -246,8 +228,8 @@ class Reanimate extends Component {
     render() {
         const { style, children, animatedChildrenKeys, currentStyle, elementsWithPendingAnimation } = this.state;
         const childrenClone = React.Children.map(children, (child, index) => {
-            let childStyle = animatedChildrenKeys.includes(child.key) ? style : currentStyle;
-            const elementWithPendingAnimation = elementsWithPendingAnimation.find(element => element.key === child.key);
+            let childStyle = animatedChildrenKeys.includes(`.$${child.key}`) ? style : currentStyle;
+            const elementWithPendingAnimation = elementsWithPendingAnimation.find(element => element.key === `.$${child.key}`);
             if (elementWithPendingAnimation) {
                 childStyle = elementWithPendingAnimation.newStyle;
             }
