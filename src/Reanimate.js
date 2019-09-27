@@ -65,7 +65,7 @@ class Reanimate extends Component {
         const { exitAnimations, animations, globalSpeed, children, noEntryAnimation, noExitAnimation } = this.props;
         let style = {};
         let newStyle = {};
-        console.log('animating');
+
         if (isUnmounting && exitAnimations !== undefined && !noExitAnimation) {
             style = this.setStylesProps(exitAnimations, false);
         } else if (isUnmounting && exitAnimations === undefined && !noExitAnimation) {
@@ -84,9 +84,6 @@ class Reanimate extends Component {
                 console.log('asd', animatedChildrenKeys, child.key);
                 if (animatedChildrenKeys.includes(child.key)) {
                     index = children.findIndex(childElement => childElement.key === child.key);
-
-
-
                 }
             });
             children.splice(index, 1);
@@ -95,7 +92,7 @@ class Reanimate extends Component {
         }
 
         // } make it happen unmount without animation  
-
+        newStyle = Object.assign({}, style);
         let lowestSpeed = 0;
         Object.entries(!isUnmounting ? animations : exitAnimations || animations).map(([key, value]) => {
             newStyle[key] = value.to;
@@ -117,7 +114,7 @@ class Reanimate extends Component {
         //         previousChildren.push(child);
         //     }
         // });
-
+        console.log('asd', elementsWithPendingAnimation, style, newStyle);
         this.requestTimeout(() => {
             this.setState({ style });
             if (!isUnmounting && Object.values(elementsWithPendingAnimation).length === 0) {
