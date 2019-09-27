@@ -109,12 +109,12 @@ class Reanimate extends Component {
 
                 this.state.children.forEach((child, index) => {
                     if (animatedChildrenKeys.includes(`.$${child.key}`)) {
-                        const test = document.getElementById(child.key);
-                        test.addEventListener('transitionend', () => {
-                            test.style.display = 'none';
+                        const element = document.getElementById(child.key);
+                        element.addEventListener('transitionend', () => {
                             elementsWithPendingAnimation = elementsWithPendingAnimation.filter((element) => !animatedChildrenKeys.includes(element.key));
                             children.splice(index, 1);
                             this.setState({ elementsWithPendingAnimation, children });
+                            element.parentNode.removeChild(element);
                         });
                     }
                 });

@@ -34,6 +34,15 @@ class Animated extends Component {
                 speed: 1000
             }
         }
+        console.log('asd array', this.state.array);
+        // const exitAnimations = {
+        //     left: {
+        //         from: 300,
+        //         to: 1000,
+        //         type: 'linear',
+        //         speed: 1000
+        //     }
+        // }
 
         return (
             <div>
