@@ -72,7 +72,6 @@ class Reanimate extends Component {
         this.setState({ currentStyle: style });
         const newStyle = Object.assign({}, style);
         let lowestSpeed = 0;
-
         Object.entries(!isUnmounting ? animations : exitAnimations || animations).map(([key, value]) => {
             newStyle[key] = value.to;
             if (!isUnmounting || (isUnmounting && exitAnimations !== undefined)) {
@@ -90,7 +89,8 @@ class Reanimate extends Component {
         this.requestTimeout(() => {
             (isUnmounting ? this.state.children : this.props.children).forEach(child => {
                 if (animatedChildrenKeys.includes(child.key)) {
-                    childrenStyleMap[child.key] = newStyle;
+                    let mergedStyles = { ...childrenStyleMap[child.key], ...newStyle };
+                    childrenStyleMap[child.key] = mergedStyles;
                 }
             });
             this.setState({ style });
@@ -119,11 +119,8 @@ class Reanimate extends Component {
     removeChild = (id) => {
         const { children, animatedChildrenKeys } = this.state;
         if (animatedChildrenKeys.includes(id)) {
-            console.log('asd', id, children, animatedChildrenKeys);
             const index = children.findIndex((child) => child.key === id);
-            console.log('asd index', index);
             if (index >= 0) {
-                console.log('asd splciing');
                 children.splice(index, 1);
                 this.setState({ children });
             }
@@ -236,8 +233,6 @@ class Reanimate extends Component {
         const { style, children, isMounting, childrenStyleMap } = this.state;
         const childrenClone = React.Children.map(children, (child) => {
             let childStyle = !isMounting ? childrenStyleMap[child.key] : style;
-            console.log('asd', child.props);
-
             const childClone = React.cloneElement(child, {
                 ...child.props,
                 identification: child.key,
