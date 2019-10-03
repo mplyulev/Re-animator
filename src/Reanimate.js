@@ -58,7 +58,7 @@ class Reanimate extends Component {
 
     animate = (isUnmounting, animatedChildrenKeys) => {
         let { childrenStyleMap } = this.state;
-        const { exitAnimations, animations, globalSpeed, children } = this.props;
+        const { exitAnimations, animations, globalSpeed, children, noEntryAnimation, noExitAnimation } = this.props;
         let style;
 
         if (isUnmounting && exitAnimations !== undefined) {
@@ -85,25 +85,36 @@ class Reanimate extends Component {
             lowestSpeed = globalSpeed;
         }
 
-        this.setState({ childrenStyleMap });
         this.requestTimeout(() => {
             (isUnmounting ? this.state.children : this.props.children).forEach(child => {
                 if (animatedChildrenKeys.includes(child.key)) {
+                    if (isUnmounting && noExitAnimation) {
+                        this.removeChild(child.key);
+                        return;
+                        console.log('asd removing');
+                    }
                     let mergedStyles = { ...childrenStyleMap[child.key], ...newStyle };
                     childrenStyleMap[child.key] = mergedStyles;
+                    console.log(children)
+
                 }
             });
+
             this.setState({ style });
             if (!isUnmounting) {
                 this.setState({ children });
             } else if (isUnmounting) {
+                console.log('asd isUnmounting')
                 this.wrapperRef.current.addEventListener('transitionend', ({ target }) => {
                     const { children } = this.state;
                     const id = target.getAttribute('identification');
+                    console.log('asd', id, animatedChildrenKeys);
                     if (animatedChildrenKeys.includes(id)) {
+                        console.log('here bro');
                         const index = children.findIndex((child) => child.key === id);
                         if (index >= 0) {
                             children.splice(index, 1);
+                            console.log('asd why');
                             this.setState({ children });
                         }
                     }
@@ -243,7 +254,7 @@ class Reanimate extends Component {
         });
 
         return (
-            <div id="reanimator" ref={this.wrapperRef}>
+            <div ref={this.wrapperRef}>
                 {childrenClone}
             </div>
         );
