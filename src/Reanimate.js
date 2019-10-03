@@ -101,7 +101,6 @@ class Reanimate extends Component {
 
             this.setState({ style });
             if (!isUnmounting) {
-
                 const childrenClone = [...this.props.children]
                 this.state.children.forEach((prevChild, index) => {
                     if (leavingElementsKeys.includes(prevChild.key) && children.every(child => child.key !== prevChild.key)) {
@@ -249,13 +248,17 @@ class Reanimate extends Component {
 
     render() {
         const { style, children, animatedChildrenKeys, isMounting, childrenStyleMap, leavingElementsKeys } = this.state;
+
         const childrenClone = React.Children.map(children, (child) => {
-            let childStyle = !isMounting || (isMounting && leavingElementsKeys.includes(child.key))
+            const isMountingWhileUnmountPending = isMounting && leavingElementsKeys.includes(child.key)
+            const isEnteringWithoutAnimation = animatedChildrenKeys.includes(child.key) && isMounting && this.props.noEntryAnimation;
+            let childStyle = !isMounting || isMountingWhileUnmountPending || isEnteringWithoutAnimation
                 ? Object.assign({}, childrenStyleMap[child.key])
                 : Object.assign({}, style);
-            if (animatedChildrenKeys.includes(child.key) && isMounting && this.props.noEntryAnimation) {
+
+            if (isEnteringWithoutAnimation) {
                 childStyle.transition = '';
-            } // now we can see the element in the beggining;
+            } // now we can see the element in the beggining. should not see it ;
             const childClone = React.cloneElement(child, {
                 ...child.props,
                 identification: child.key,
