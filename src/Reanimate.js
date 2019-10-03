@@ -11,6 +11,7 @@ class Reanimate extends Component {
             childrenStyleMap: {},
             isMounting: true,
             animatedChildrenKeys: [],
+            leavingElementsKeys: [],
             elementsWithPendingAnimation: []
         }
 
@@ -57,7 +58,7 @@ class Reanimate extends Component {
     }
 
     animate = (isUnmounting, animatedChildrenKeys) => {
-        let { childrenStyleMap } = this.state;
+        let { childrenStyleMap, leavingElementsKeys } = this.state;
         const { exitAnimations, animations, globalSpeed, children, noEntryAnimation, noExitAnimation } = this.props;
         let style;
 
@@ -91,40 +92,49 @@ class Reanimate extends Component {
                     if (isUnmounting && noExitAnimation) {
                         this.removeChild(child.key);
                         return;
-                        console.log('asd removing');
                     }
+
                     let mergedStyles = { ...childrenStyleMap[child.key], ...newStyle };
                     childrenStyleMap[child.key] = mergedStyles;
-                    console.log(children)
-
                 }
             });
 
             this.setState({ style });
             if (!isUnmounting) {
-                this.setState({ children });
-            } else if (isUnmounting) {
-                console.log('asd isUnmounting')
-                this.wrapperRef.current.addEventListener('transitionend', ({ target }) => {
-                    const { children } = this.state;
-                    const id = target.getAttribute('identification');
-                    console.log('asd', id, animatedChildrenKeys);
-                    if (animatedChildrenKeys.includes(id)) {
-                        console.log('here bro');
-                        const index = children.findIndex((child) => child.key === id);
-                        if (index >= 0) {
-                            children.splice(index, 1);
-                            console.log('asd why');
-                            this.setState({ children });
-                        }
+
+                const childrenClone = [...this.props.children]
+                this.state.children.forEach((prevChild, index) => {
+                    if (leavingElementsKeys.includes(prevChild.key) && children.every(child => child.key !== prevChild.key)) {
+                        childrenClone.splice(index, 0, prevChild);
                     }
                 });
+
+                this.setState({ children: childrenClone });
+            } else if (isUnmounting) {
+                this.setState({ leavingElementsKeys: leavingElementsKeys.concat(animatedChildrenKeys) });
+                const handleTransitionEnd = (event) => this.handleTransitionEndCallback(event, animatedChildrenKeys, handleTransitionEnd);
+                this.wrapperRef.current.addEventListener('transitionend', handleTransitionEnd);
             }
 
             this.requestTimeout(() => {
                 this.setState({ style: newStyle });
             }, 0)
         }, 0);
+    };
+
+    handleTransitionEndCallback = ({ target }, animatedChildrenKeys, eventRef) => {
+        const { children, leavingElementsKeys } = this.state;
+        const id = target.getAttribute('identification');
+
+        if (animatedChildrenKeys.includes(id)) {
+            const index = children.findIndex((child) => child.key === id);
+            if (index >= 0) {
+                children.splice(index, 1);
+                const filteredKeys = leavingElementsKeys.filter(key => key !== id);
+                this.setState({ children, leavingElementsKeys: filteredKeys });
+                this.wrapperRef.current.removeEventListener('transitionend', eventRef);
+            }
+        }
     }
 
     removeChild = (id) => {
@@ -135,10 +145,7 @@ class Reanimate extends Component {
                 children.splice(index, 1);
                 this.setState({ children });
             }
-
         }
-
-
     }
 
     requestTimeout = (fn, delay) => {
@@ -241,9 +248,14 @@ class Reanimate extends Component {
     };
 
     render() {
-        const { style, children, isMounting, childrenStyleMap } = this.state;
+        const { style, children, animatedChildrenKeys, isMounting, childrenStyleMap, leavingElementsKeys } = this.state;
         const childrenClone = React.Children.map(children, (child) => {
-            let childStyle = !isMounting ? childrenStyleMap[child.key] : style;
+            let childStyle = !isMounting || (isMounting && leavingElementsKeys.includes(child.key))
+                ? Object.assign({}, childrenStyleMap[child.key])
+                : Object.assign({}, style);
+            if (animatedChildrenKeys.includes(child.key) && isMounting && this.props.noEntryAnimation) {
+                childStyle.transition = '';
+            } // now we can see the element in the beggining;
             const childClone = React.cloneElement(child, {
                 ...child.props,
                 identification: child.key,
@@ -254,7 +266,7 @@ class Reanimate extends Component {
         });
 
         return (
-            <div ref={this.wrapperRef}>
+            <div ref={this.wrapperRef} >
                 {childrenClone}
             </div>
         );
