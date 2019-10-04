@@ -37,6 +37,7 @@ class Reanimate extends Component {
         };
 
         const { globalSpeed, exitAnimations } = this.props;
+q
         Object.entries(isUnmounting ? exitAnimations || animations : animations).map(([cssPropName, value], index) => {
             if (isUnmounting) {
                 style[cssPropName] = exitAnimations !== undefined ? value.from : value.to;

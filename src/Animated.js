@@ -26,14 +26,16 @@ class Animated extends Component {
     }
 
     render() {
-        const animations = {
-            left: {
-                from: 0,
-                to: 300,
-                type: 'linear',
-                speed: 1111
+        const animations = [
+            {
+                left: {
+                    from: 0,
+                    to: 300,
+                    type: 'linear',
+                    speed: 1111
+                }
             }
-        }
+        ];
 
         const exitAnimations = {
             opacity: {
@@ -53,7 +55,7 @@ class Animated extends Component {
                     })}
                 </Reanimate>
 
-            </div>
+            </div >
 
         );
     }
