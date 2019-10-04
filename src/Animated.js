@@ -32,7 +32,21 @@ class Animated extends Component {
                     from: 0,
                     to: 300,
                     type: 'linear',
-                    speed: 1111
+                    speed: 5000
+                },
+                top: {
+                    from: 0,
+                    to: 300,
+                    type: 'linear',
+                    speed: 1000
+                }
+            },
+            {
+                top: {
+                    from: 0,
+                    to: 300,
+                    type: 'linear',
+                    speed: 555
                 }
             }
         ];
@@ -47,7 +61,7 @@ class Animated extends Component {
         }
 
         return (
-            <div>
+            <div className='test'>
                 <button onClick={this.addElement}>Add Element</button>
                 <Reanimate animations={animations} isMounted={this.state.isMounted} noEntryAnimation={false} noExitAnimation={false} globalSpeed={111} interval={0}>
                     {this.state.array.map((item) => {

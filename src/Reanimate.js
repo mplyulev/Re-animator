@@ -37,7 +37,6 @@ class Reanimate extends Component {
         };
 
         const { globalSpeed, exitAnimations } = this.props;
-q
         Object.entries(isUnmounting ? exitAnimations || animations : animations).map(([cssPropName, value], index) => {
             if (isUnmounting) {
                 style[cssPropName] = exitAnimations !== undefined ? value.from : value.to;
@@ -58,23 +57,23 @@ q
         return style;
     }
 
-    animate = (isUnmounting, animatedChildrenKeys) => {
+    animate = (animation, isUnmounting, animatedChildrenKeys) => {
+        console.log('asd animating', animatedChildrenKeys);
         let { childrenStyleMap, leavingElementsKeys } = this.state;
-        const { exitAnimations, animations, globalSpeed, children, noEntryAnimation, noExitAnimation } = this.props;
+        const { exitAnimations, globalSpeed, children, noEntryAnimation, noExitAnimation } = this.props;
         let style;
 
         if (isUnmounting && exitAnimations !== undefined) {
             style = this.constructStyle(exitAnimations, false);
         } else if (isUnmounting && exitAnimations === undefined) {
-            style = this.constructStyle(animations, true);
+            style = this.constructStyle(animation, true);
         } else if (!isUnmounting) {
-            style = this.constructStyle(animations, false);
+            style = this.constructStyle(animation, false);
         }
 
         this.setState({ currentStyle: style });
         const newStyle = Object.assign({}, style);
-        let lowestSpeed = 0;
-        Object.entries(!isUnmounting ? animations : exitAnimations || animations).map(([key, value]) => {
+        Object.entries(!isUnmounting ? animation : exitAnimations || animation).map(([key, value]) => {
             newStyle[key] = value.to;
             if (!isUnmounting || (isUnmounting && exitAnimations !== undefined)) {
                 newStyle[key] = value.to;
@@ -82,11 +81,7 @@ q
                 newStyle[key] = value.from;
             }
         });
-
-        if (lowestSpeed < globalSpeed) {
-            lowestSpeed = globalSpeed;
-        }
-
+        console.log('asd', animatedChildrenKeys)
         this.requestTimeout(() => {
             (isUnmounting ? this.state.children : this.props.children).forEach(child => {
                 if (animatedChildrenKeys.includes(child.key)) {
@@ -214,20 +209,49 @@ q
     componentWillReceiveProps(nextProps, nextState) {
         const newChildren = nextProps.children;
         const oldChildren = this.props.children;
-
+        const { animations } = this.props;
         if (newChildren.length !== oldChildren.length && newChildren.length < oldChildren.length) {
             const animatedChildrenKeys = this.findRemovedChildrenKeys(newChildren, oldChildren).animatedChildrenKeys;
-            this.setState({ animatedChildrenKeys, isMounting: false }, () => {
-                this.animate(true, animatedChildrenKeys);
-            })
+            this.handleUnmountingAnimation(animations, animatedChildrenKeys);
         }
 
         if (newChildren.length !== oldChildren.length && newChildren.length > oldChildren.length) {
             const animatedChildrenKeys = this.findAddedChildrenKeys(newChildren, oldChildren).animatedChildrenKeys;
-            this.setState({ animatedChildrenKeys, isMounting: true }, () => {
-                this.animate(false, animatedChildrenKeys);
-            })
+            this.handleMountingAnimations(animations, animatedChildrenKeys);
         }
+    }
+
+    handleUnmountingAnimation = (animations, animatedChildrenKeys) => {
+        this.setState({ animatedChildrenKeys, isMounting: false }, () => {
+            animations.forEach((animation, index) => {
+                if (index !== 0) {
+                    this.requestTimeout(this.animate(animation, true, animatedChildrenKeys), animations[index - 1].speed);
+                } else {
+                    this.animate(animation, true, animatedChildrenKeys);
+                }
+            })
+        })
+    }
+
+    handleMountingAnimations = (animations, animatedChildrenKeys) => {
+        console.log('asd anim keys', animatedChildrenKeys);
+        this.setState({ animatedChildrenKeys, isMounting: true }, () => {
+            animations.forEach((animation, index) => {
+                if (index !== 0 && index <= animations.length - 1) {
+                    const prevAnimation = animations[index - 1];
+                    const getSpeeds = (animation) => {
+                        console.log('asd second anim')
+                        return Object.values(animation).map(d => d.speed);
+                    }
+
+                    const minSpeed = Math.max(...getSpeeds(prevAnimation));
+                    this.requestTimeout(() => this.animate(animations[index - 1], false, animatedChildrenKeys), minSpeed);
+                } else {
+                    console.log('asd first', animatedChildrenKeys);
+                    this.animate(animation, false, animatedChildrenKeys);
+                }
+            })
+        })
     }
 
     // shouldComponentUpdate(nextProps, nextState) {
@@ -240,10 +264,10 @@ q
 
     componentDidMount() {
         this.addRequestAnimFramePolyfill();
-        const { children } = this.props;
+        const { children, animations } = this.props;
         const animatedChildrenKeys = this.findAddedChildrenKeys(children, []).animatedChildrenKeys;
-        this.setState({ animatedChildrenKeys, children }, () => {
-            animatedChildrenKeys && this.animate(false, animatedChildrenKeys);
+        this.setState({ animatedChildrenKeys }, () => {
+            this.handleMountingAnimations(animations, this.state.animatedChildrenKeys);
         });
     };
 
