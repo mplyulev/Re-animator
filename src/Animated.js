@@ -38,20 +38,20 @@ class Animated extends Component {
                     from: 0,
                     to: 300,
                     type: 'linear',
-                    speed: 1000
+                    speed: 5000
                 }
             },
             {
                 top: {
-                    from: 0,
-                    to: 300,
+                    from: 300,
+                    to: 0,
                     type: 'linear',
                     speed: 555
                 }
             }
         ];
 
-        const exitAnimations = {
+        const exitAnimations = [{
             opacity: {
                 from: 1,
                 to: 0,
@@ -59,6 +59,7 @@ class Animated extends Component {
                 speed: 1111
             }
         }
+        ]
 
         return (
             <div className='test'>
