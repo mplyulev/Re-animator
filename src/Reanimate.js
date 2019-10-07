@@ -8,7 +8,6 @@ class Reanimate extends Component {
         this.state = {
             children: [],
             style: {},
-            childrenStyleMap: {},
             isMounting: true,
             animatedChildrenKeys: [],
             elementAnimationMap: {},
@@ -59,34 +58,17 @@ class Reanimate extends Component {
     }
 
     animate = (animation, isUnmounting, animatedChildrenKeys, prevAnimation, isLastAnimation) => {
-        let { childrenStyleMap, leavingElementsKeys, elementAnimationMap } = this.state;
+        console.log('asd anim', animation);
+        let { leavingElementsKeys, elementAnimationMap } = this.state;
         const { exitAnimations, globalSpeed, children, noEntryAnimation, noExitAnimation } = this.props;
         let style;
+
         if (isUnmounting && exitAnimations !== undefined) {
             style = this.constructStyle(exitAnimations, false);
         } else if (isUnmounting && exitAnimations === undefined) {
             style = this.constructStyle(animation, true);
         } else if (!isUnmounting) {
             style = this.constructStyle(animation, false);
-        }
-
-        let isMountingSequence = !isUnmounting && prevAnimation;
-
-        if (isMountingSequence) {
-            Object.entries(prevAnimation).map(([key, value]) => {
-                if (!Object.keys(animation).includes(key)) {
-                    style[key] = value.to
-                }
-            });
-
-            const prevChildren = this.state.children.filter(child => !animatedChildrenKeys.includes(child.key));
-            prevChildren.forEach(child => {
-                if (childrenStyleMap[child.key]) {
-                    let mergedStyles = { ...childrenStyleMap[child.key] && style, ...newStyle };
-                    childrenStyleMap[child.key].style = mergedStyles;
-                    childrenStyleMap[child.key].isPrevChild = true;
-                }
-            });
         }
 
         const newStyle = Object.assign({}, style);
@@ -99,48 +81,50 @@ class Reanimate extends Component {
             }
         });
 
-        this.setState({ childrenStyleMap });
         this.requestTimeout(() => {
             (isUnmounting ? this.state.children : this.props.children).forEach(child => {
                 if (animatedChildrenKeys.includes(child.key)) {
                     if (isUnmounting && noExitAnimation) {
+                        console.log('asd removing');
                         this.removeChild(child.key);
                         elementAnimationMap[child.key] = null;
                         return;
                     }
 
-                    isUnmounting && Object.keys(elementAnimationMap[child.key].startStyle).forEach(prop => {
+                    elementAnimationMap[child.key] && elementAnimationMap[child.key].startStyle && Object.keys(elementAnimationMap[child.key].startStyle).forEach(prop => {
                         if (!Object.keys(animation).includes(prop) && prop !== 'transition') {
-                            style[prop] = elementAnimationMap[child.key].startStyle[prop];
+                            style[prop] = elementAnimationMap[child.key].currentStyle[prop];
                             newStyle[prop] = elementAnimationMap[child.key].currentStyle[prop];
                         }
                     });
-
+                    console.log('asd34', style, newStyle);
                     elementAnimationMap[child.key].startStyle = style
                     elementAnimationMap[child.key].currentStyle = newStyle;
                     elementAnimationMap[child.key].isStarting = true;
                 }
             });
 
-            this.setState({ style, elementAnimationMap });
+            let childrenClone = [...this.props.children];
             if (!isUnmounting) {
-                const childrenClone = [...this.props.children]
                 this.state.children.forEach((prevChild, index) => {
                     if (leavingElementsKeys.includes(prevChild.key) && children.every(child => child.key !== prevChild.key)) {
                         childrenClone.splice(index, 0, prevChild);
                     }
                 });
-
                 this.setState({ children: childrenClone });
-            } else if (isUnmounting) {
+            } else {
                 this.setState({ leavingElementsKeys: leavingElementsKeys.concat(animatedChildrenKeys) });
-
             }
+
+            this.setState({ style, elementAnimationMap });
 
             this.requestTimeout(() => {
                 (isUnmounting ? this.state.children : this.props.children).forEach(child => {
                     if (animatedChildrenKeys.includes(child.key)) {
                         elementAnimationMap[child.key].isStarting = false;
+                        if (isLastAnimation && isUnmounting) {
+                            elementAnimationMap[child.key].startUnmount = true;
+                        }
                     }
                 });
 
@@ -149,16 +133,12 @@ class Reanimate extends Component {
         }, 0);
     };
 
-    handleTransitionEnd = ({ target }, animatedChildrenKeys) => {
-        console.log('asd handling')
-        const { children, leavingElementsKeys, elementAnimationMap } = this.state;
+    handleTransitionEnd = ({ target }) => {
+        const { elementAnimationMap } = this.state;
         const id = target.getAttribute('identification');
-        // elementAnimationMap[id].animationPending =  ? true : false
-        if (animatedChildrenKeys.includes(id) && elementAnimationMap[id].isUnmounting) {
-
+        if (elementAnimationMap[id].isUnmounting && elementAnimationMap[id].startUnmount) {
+            target.parentNode.removeChild(target);
         }
-
-        this.setState({ elementAnimationMap });
     }
 
     removeChild = (id) => {
@@ -246,7 +226,7 @@ class Reanimate extends Component {
                 elementAnimationMap[key].isUnmounting = true;
                 elementAnimationMap[key].animationPending = true;
             });
-            this.handleUnmountingAnimation(exitAnimations || animations.reverse(), animatedChildrenKeys);
+            this.handleUnmountingAnimation(exitAnimations || animations.reverse(), animatedChildrenKeys, elementAnimationMap);
         }
 
         if (newChildren.length !== oldChildren.length && newChildren.length > oldChildren.length) {
@@ -257,20 +237,25 @@ class Reanimate extends Component {
                     animationPending: true
                 }
             });
+
             this.handleMountingAnimations(animations, animatedChildrenKeys, elementAnimationMap);
         }
     }
 
-    handleUnmountingAnimation = (animations, animatedChildrenKeys) => {
+    handleUnmountingAnimation = (animations, animatedChildrenKeys, elementAnimationMap) => {
         this.setState({ animatedChildrenKeys, isMounting: false }, () => {
+            // animatedChildrenKeys.forEach(key => {
+            //     elementAnimationMap[key].currentAnimationIndex = index;
+            // });
             animations.forEach((animation, index) => {
                 if (index !== 0 && index <= animations.length - 1) {
                     const prevAnimation = animations[index - 1];
-                    const minSpeed = this.getAnimationSpeed(prevAnimation);
+                    const prevAnimations = animations.slice(0, index);
+                    const delay = this.getAnimationDelay(prevAnimations);
                     const isLastAnimation = index === animations.length - 1;
                     this.requestTimeout(() => {
                         this.animate(animation, true, animatedChildrenKeys, prevAnimation, isLastAnimation)
-                    }, minSpeed);
+                    }, delay); // clear these timeouts afterwards ;
                 } else {
                     this.animate(animation, true, animatedChildrenKeys);
                 }
@@ -278,15 +263,19 @@ class Reanimate extends Component {
         });
     }
 
-    handleMountingAnimations = (animations, animatedChildrenKeys) => {
-        this.setState({ animatedChildrenKeys, isMounting: true }, () => {
+    handleMountingAnimations = (animations, animatedChildrenKeys, elementAnimationMap) => {
+        this.setState({ animatedChildrenKeys, elementAnimationMap, isMounting: true }, () => {
             animations.forEach((animation, index) => {
+                animatedChildrenKeys.forEach(key => {
+                    elementAnimationMap[key].prevAnimat = index;
+                });
                 if (index !== 0 && index <= animations.length - 1) {
                     const prevAnimation = animations[index - 1];
-                    const minSpeed = this.getAnimationSpeed(prevAnimation);
+                    const prevAnimations = animations.slice(0, index);
+                    const delay = this.getAnimationDelay(prevAnimations);
                     this.requestTimeout(() => {
                         this.animate(animation, false, animatedChildrenKeys, prevAnimation);
-                    }, minSpeed);
+                    }, delay);
                 } else {
                     this.animate(animation, false, animatedChildrenKeys);
                 }
@@ -294,17 +283,16 @@ class Reanimate extends Component {
         });
     }
 
-    getAnimationSpeed = (prevAnimation) => {
-        return Math.max(...Object.values(prevAnimation).map(d => d.speed));
+    getAnimationDelay = (prevAnimations) => {
+        return prevAnimations.reduce((acc, prevAnimation) => {
+            acc += Math.max(...Object.values(prevAnimation).map(d => d.speed));
+            return acc;
+        }, 0);
     }
 
-    // shouldComponentUpdate(nextProps, nextState) {
-    //     if (nextState.children.length !== this.state.children.length || this.state.style !== nextState.style) {
-    //         return true;
-    //     } else {
-    //         return false;
-    //     }
-    // }
+    shouldComponentUpdate(nextProps, nextState) {
+        return nextState.children.length !== this.state.children.length || this.state.style !== nextState.style;
+    }
 
 
     componentDidMount() {
@@ -321,9 +309,7 @@ class Reanimate extends Component {
             }
         });
 
-        this.setState({ animatedChildrenKeys, elementAnimationMap }, () => {
-            this.handleMountingAnimations(animations, animatedChildrenKeys);
-        });
+        this.handleMountingAnimations(animations, animatedChildrenKeys, elementAnimationMap);
     };
 
     componentWillUnmount() {
@@ -331,32 +317,17 @@ class Reanimate extends Component {
     }
 
     render() {
+
         const {
-            style,
             children,
-            animatedChildrenKeys,
             isMounting,
-            elementAnimationMap,
-            childrenStyleMap,
-            leavingElementsKeys } = this.state;
+            elementAnimationMap } = this.state;
 
         const childrenClone = React.Children.map(children, (child) => {
-            const isChildAnimated = animatedChildrenKeys.includes(child.id);
-            // const isMountingWhileUnmountPending = isMounting && leavingElementsKeys.includes(child.key)
-            const isEnteringWithoutAnimation = isChildAnimated && isMounting && this.props.noEntryAnimation;
-            // let childStyle = elementAnimationMap[child.key] && elementAnimationMap[child.key].currentStyle || style;
             const childAnimationData = elementAnimationMap[child.key];
             const { animationPending, currentStyle, startStyle, isStarting } = childAnimationData;
             let childStyle = animationPending && !isStarting ? currentStyle : startStyle;
-            //     ? Object.assign({}, childrenStyleMap[child.key].style)
-            // : Object.assign({}, style);
-            // if (isMounting && !isChildAnimated && childrenStyleMap[child.key] && childrenStyleMap[child.key].isPrevChild) {
-            //     childStyle = childrenStyleMap[child.key].style;
-            // }
 
-            if (isEnteringWithoutAnimation) {
-                childStyle.transition = '';
-            } // now we can see the element in the beggining. should not see it ;
             const childClone = React.cloneElement(child, {
                 ...child.props,
                 identification: child.key,

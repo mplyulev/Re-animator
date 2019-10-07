@@ -32,19 +32,43 @@ class Animated extends Component {
                     from: 0,
                     to: 300,
                     type: 'linear',
-                    speed: 5000
+                    speed: 1000
                 },
                 top: {
                     from: 0,
                     to: 300,
                     type: 'linear',
-                    speed: 5000
+                    speed: 1000
                 }
             },
             {
                 top: {
                     from: 300,
                     to: 0,
+                    type: 'linear',
+                    speed: 555
+                }
+            },
+            // {
+            //     opacity: {
+            //         from: 1,
+            //         to: 0.5,
+            //         type: 'linear',
+            //         speed: 555
+            //     }
+            // },
+            // {
+            //     opacity: {
+            //         from: 0.5,
+            //         to: 1,
+            //         type: 'linear',
+            //         speed: 555
+            //     }
+            // },
+            {
+                fontSize: {
+                    from: '14px',
+                    to: '25px',
                     type: 'linear',
                     speed: 555
                 }
@@ -64,7 +88,7 @@ class Animated extends Component {
         return (
             <div className='test'>
                 <button onClick={this.addElement}>Add Element</button>
-                <Reanimate animations={animations} isMounted={this.state.isMounted} noEntryAnimation={false} noExitAnimation={false} globalSpeed={111} interval={0}>
+                <Reanimate animations={animations} isMounted={this.state.isMounted} noEntryAnimation={true} noExitAnimation={false} globalSpeed={111} interval={0}>
                     {this.state.array.map((item) => {
                         return <div className={`animated`} key={item.id} onClick={() => this.remove(item.id)}>{Math.random()}</div>
                     })}
