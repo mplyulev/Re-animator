@@ -234,7 +234,7 @@ class Reanimate extends Component {
             animatedChildrenKeys.forEach(key => {
                 elementAnimationMap[key].isUnmounting = true;
             });
-            this.handleUnmountingAnimation(exitAnimations || animations.reverse(), animatedChildrenKeys, elementAnimationMap);
+            this.handleUnmountingAnimation(exitAnimations || animations, animatedChildrenKeys, elementAnimationMap);
         }
 
         if (newChildren.length !== oldChildren.length && newChildren.length > oldChildren.length) {
@@ -251,29 +251,10 @@ class Reanimate extends Component {
 
     handleUnmountingAnimation = (animations, animatedChildrenKeys, elementAnimationMap) => {
         this.setState({ animatedChildrenKeys, isMounting: false }, () => {
-            let elementsWithPendingAnimations = {};
-            let elementsWithFinishedAnimations = {};
-            animatedChildrenKeys.forEach(key => {
-                elementAnimationMap[key].animationPending
-                    ? elementsWithPendingAnimations[key] = elementAnimationMap[key]
-                    : elementsWithFinishedAnimations[key] = elementAnimationMap[key]
-            });
-            console.log('asd penidng', elementsWithPendingAnimations);
+            const { elementsWithFinishedAnimations, elementsWithPendingAnimations } = this.sortElements(animatedChildrenKeys, elementAnimationMap);
             Object.keys(elementsWithPendingAnimations).forEach(key => {
                 if (elementsWithPendingAnimations[key].prevAnimations) {
-                    elementsWithPendingAnimations[key].prevAnimations.forEach((animation, index) => {
-                        if (index !== 0 && index <= animations.length - 1) {
-                            const prevAnimation = animations[index - 1];
-                            const prevAnimations = animations.slice(0, index);
-                            const delay = this.getAnimationDelay(prevAnimations);
-                            const isLastAnimation = index === animations.length - 1;
-                            this.requestTimeout(() => {
-                                this.animate(animation, true, Object.keys(elementsWithFinishedAnimations), prevAnimation, prevAnimations, isLastAnimation);
-                            }, delay);
-                        } else {
-                            this.animate(animation, true, Object.keys(elementsWithFinishedAnimations));
-                        }
-                    });
+                    this.handleAnimations(elementsWithPendingAnimations[key].prevAnimations.reverse(), Object.keys(elementsWithPendingAnimations));
                 }
 
                 if (!elementsWithPendingAnimations[key].prevAnimations) {
@@ -282,40 +263,22 @@ class Reanimate extends Component {
             });
 
             if (Object.keys(elementsWithFinishedAnimations).length > 0) {
-                animations.forEach((animation, index) => {
-                    if (index !== 0 && index <= animations.length - 1) {
-                        const prevAnimation = animations[index - 1];
-                        const prevAnimations = animations.slice(0, index);
-                        const delay = this.getAnimationDelay(prevAnimations);
-                        const isLastAnimation = index === animations.length - 1;
-                        this.requestTimeout(() => {
-                            this.animate(animation, true, Object.keys(elementsWithFinishedAnimations), prevAnimation, prevAnimations, isLastAnimation);
-                        }, delay);
-                    } else {
-                        this.animate(animation, true, Object.keys(elementsWithFinishedAnimations));
-                    }
-                });
+                console.log('asd handle');
+                this.handleAnimations(animations.reverse(), Object.keys(elementsWithFinishedAnimations));
             }
-
         });
     }
 
     handleMountingAnimations = (animations, animatedChildrenKeys, elementAnimationMap) => {
         this.setState({ animatedChildrenKeys, elementAnimationMap, isMounting: true }, () => {
-            let elementsWithPendingAnimations = {};
-            let elementsWithFinishedAnimations = {};
-            animatedChildrenKeys.forEach(key => {
-                elementAnimationMap[key].animationPending
-                    ? elementsWithPendingAnimations[key] = elementAnimationMap[key]
-                    : elementsWithFinishedAnimations[key] = elementAnimationMap[key]
-            });
-            console.log('asd pending', elementsWithPendingAnimations)
+            const { elementsWithFinishedAnimations, elementsWithPendingAnimations } = this.sortElements(animatedChildrenKeys, elementAnimationMap);
+
             animations.forEach((animation, index) => {
                 if (index !== 0 && index <= animations.length - 1) {
                     const prevAnimation = animations[index - 1];
-                    const prevAnimations = animations.slice(0, index);
                     const isLastAnimation = index === animations.length - 1;
-                    const delay = this.getAnimationDelay(prevAnimations);
+                    const prevAnimations = isLastAnimation ? animations : animations.slice(0, index);
+                    const delay = this.getAnimationDelay(animations.slice(0, index));
                     this.requestTimeout(() => {
                         this.animate(animation, false, animatedChildrenKeys, prevAnimation, prevAnimations, isLastAnimation);
                     }, delay);
@@ -323,6 +286,34 @@ class Reanimate extends Component {
                     this.animate(animation, false, animatedChildrenKeys);
                 }
             });
+        });
+    }
+
+    sortElements = (animatedChildrenKeys, elementAnimationMap) => {
+        let elementsWithPendingAnimations = {};
+        let elementsWithFinishedAnimations = {};
+        animatedChildrenKeys.forEach(key => {
+            elementAnimationMap[key].animationPending
+                ? elementsWithPendingAnimations[key] = elementAnimationMap[key]
+                : elementsWithFinishedAnimations[key] = elementAnimationMap[key]
+        });
+
+        return { elementsWithPendingAnimations, elementsWithFinishedAnimations }
+    }
+
+    handleAnimations = (animations, animatedChildrenKeys) => {
+        animations.forEach((animation, index) => {
+            if (index !== 0 && index <= animations.length - 1) {
+                const prevAnimation = animations[index - 1];
+                const prevAnimations = isLastAnimation ? animations : animations.slice(0, index);
+                const delay = this.getAnimationDelay(animations.slice(0, index));
+                const isLastAnimation = index === animations.length - 1;
+                this.requestTimeout(() => {
+                    this.animate(animation, true, animatedChildrenKeys, prevAnimation, prevAnimations, isLastAnimation);
+                }, delay);
+            } else {
+                this.animate(animation, true, animatedChildrenKeys);
+            }
         });
     }
 
