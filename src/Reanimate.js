@@ -57,7 +57,7 @@ class Reanimate extends Component {
         return style;
     }
 
-    animate = (animation, isUnmounting, animatedChildrenKeys, prevAnimation, isLastAnimation) => {
+    animate = (animation, isUnmounting, animatedChildrenKeys, prevAnimation, prevAnimations, isLastAnimation) => {
         console.log('asd anim', animation);
         let { leavingElementsKeys, elementAnimationMap } = this.state;
         const { exitAnimations, globalSpeed, children, noEntryAnimation, noExitAnimation } = this.props;
@@ -85,22 +85,22 @@ class Reanimate extends Component {
             (isUnmounting ? this.state.children : this.props.children).forEach(child => {
                 if (animatedChildrenKeys.includes(child.key)) {
                     if (isUnmounting && noExitAnimation) {
-                        console.log('asd removing');
                         this.removeChild(child.key);
                         elementAnimationMap[child.key] = null;
                         return;
                     }
-
+                    elementAnimationMap[child.key].animationPending = true;
                     elementAnimationMap[child.key] && elementAnimationMap[child.key].startStyle && Object.keys(elementAnimationMap[child.key].startStyle).forEach(prop => {
                         if (!Object.keys(animation).includes(prop) && prop !== 'transition') {
                             style[prop] = elementAnimationMap[child.key].currentStyle[prop];
                             newStyle[prop] = elementAnimationMap[child.key].currentStyle[prop];
                         }
                     });
-                    console.log('asd34', style, newStyle);
+
                     elementAnimationMap[child.key].startStyle = style
                     elementAnimationMap[child.key].currentStyle = newStyle;
                     elementAnimationMap[child.key].isStarting = true;
+                    elementAnimationMap[child.key].prevAnimations = prevAnimations
                 }
             });
 
@@ -122,9 +122,13 @@ class Reanimate extends Component {
                 (isUnmounting ? this.state.children : this.props.children).forEach(child => {
                     if (animatedChildrenKeys.includes(child.key)) {
                         elementAnimationMap[child.key].isStarting = false;
-                        if (isLastAnimation && isUnmounting) {
-                            elementAnimationMap[child.key].startUnmount = true;
+                        if (isUnmounting && isLastAnimation) {
+                            elementAnimationMap[child.key].shouldUnmount = true;
                         }
+                        if (!isUnmounting && isLastAnimation) {
+                            elementAnimationMap[child.key].isMounted = true;
+                        }
+
                     }
                 });
 
@@ -136,9 +140,14 @@ class Reanimate extends Component {
     handleTransitionEnd = ({ target }) => {
         const { elementAnimationMap } = this.state;
         const id = target.getAttribute('identification');
-        if (elementAnimationMap[id].isUnmounting && elementAnimationMap[id].startUnmount) {
+        if (elementAnimationMap[id].isUnmounting && elementAnimationMap[id].shouldUnmount) {
             target.parentNode.removeChild(target);
+            elementAnimationMap[id].animationPending = false;
         }
+
+        if (!elementAnimationMap[id].isUnmounting && elementAnimationMap[id].isMounted)
+            elementAnimationMap[id].animationPending = false;
+
     }
 
     removeChild = (id) => {
@@ -224,7 +233,6 @@ class Reanimate extends Component {
             const animatedChildrenKeys = this.findRemovedChildrenKeys(newChildren, oldChildren).animatedChildrenKeys;
             animatedChildrenKeys.forEach(key => {
                 elementAnimationMap[key].isUnmounting = true;
-                elementAnimationMap[key].animationPending = true;
             });
             this.handleUnmountingAnimation(exitAnimations || animations.reverse(), animatedChildrenKeys, elementAnimationMap);
         }
@@ -233,8 +241,7 @@ class Reanimate extends Component {
             const animatedChildrenKeys = this.findAddedChildrenKeys(newChildren, oldChildren).animatedChildrenKeys;
             animatedChildrenKeys.forEach(key => {
                 elementAnimationMap[key] = {
-                    isUnmounting: false,
-                    animationPending: true
+                    isUnmounting: false
                 }
             });
 
@@ -244,37 +251,73 @@ class Reanimate extends Component {
 
     handleUnmountingAnimation = (animations, animatedChildrenKeys, elementAnimationMap) => {
         this.setState({ animatedChildrenKeys, isMounting: false }, () => {
-            // animatedChildrenKeys.forEach(key => {
-            //     elementAnimationMap[key].currentAnimationIndex = index;
-            // });
-            animations.forEach((animation, index) => {
-                if (index !== 0 && index <= animations.length - 1) {
-                    const prevAnimation = animations[index - 1];
-                    const prevAnimations = animations.slice(0, index);
-                    const delay = this.getAnimationDelay(prevAnimations);
-                    const isLastAnimation = index === animations.length - 1;
-                    this.requestTimeout(() => {
-                        this.animate(animation, true, animatedChildrenKeys, prevAnimation, isLastAnimation)
-                    }, delay); // clear these timeouts afterwards ;
-                } else {
-                    this.animate(animation, true, animatedChildrenKeys);
+            let elementsWithPendingAnimations = {};
+            let elementsWithFinishedAnimations = {};
+            animatedChildrenKeys.forEach(key => {
+                elementAnimationMap[key].animationPending
+                    ? elementsWithPendingAnimations[key] = elementAnimationMap[key]
+                    : elementsWithFinishedAnimations[key] = elementAnimationMap[key]
+            });
+            console.log('asd penidng', elementsWithPendingAnimations);
+            Object.keys(elementsWithPendingAnimations).forEach(key => {
+                if (elementsWithPendingAnimations[key].prevAnimations) {
+                    elementsWithPendingAnimations[key].prevAnimations.forEach((animation, index) => {
+                        if (index !== 0 && index <= animations.length - 1) {
+                            const prevAnimation = animations[index - 1];
+                            const prevAnimations = animations.slice(0, index);
+                            const delay = this.getAnimationDelay(prevAnimations);
+                            const isLastAnimation = index === animations.length - 1;
+                            this.requestTimeout(() => {
+                                this.animate(animation, true, Object.keys(elementsWithFinishedAnimations), prevAnimation, prevAnimations, isLastAnimation);
+                            }, delay);
+                        } else {
+                            this.animate(animation, true, Object.keys(elementsWithFinishedAnimations));
+                        }
+                    });
+                }
+
+                if (!elementsWithPendingAnimations[key].prevAnimations) {
+                    this.animate(animations.reverse()[0], true, Object.keys(elementsWithPendingAnimations));
                 }
             });
+
+            if (Object.keys(elementsWithFinishedAnimations).length > 0) {
+                animations.forEach((animation, index) => {
+                    if (index !== 0 && index <= animations.length - 1) {
+                        const prevAnimation = animations[index - 1];
+                        const prevAnimations = animations.slice(0, index);
+                        const delay = this.getAnimationDelay(prevAnimations);
+                        const isLastAnimation = index === animations.length - 1;
+                        this.requestTimeout(() => {
+                            this.animate(animation, true, Object.keys(elementsWithFinishedAnimations), prevAnimation, prevAnimations, isLastAnimation);
+                        }, delay);
+                    } else {
+                        this.animate(animation, true, Object.keys(elementsWithFinishedAnimations));
+                    }
+                });
+            }
+
         });
     }
 
     handleMountingAnimations = (animations, animatedChildrenKeys, elementAnimationMap) => {
         this.setState({ animatedChildrenKeys, elementAnimationMap, isMounting: true }, () => {
+            let elementsWithPendingAnimations = {};
+            let elementsWithFinishedAnimations = {};
+            animatedChildrenKeys.forEach(key => {
+                elementAnimationMap[key].animationPending
+                    ? elementsWithPendingAnimations[key] = elementAnimationMap[key]
+                    : elementsWithFinishedAnimations[key] = elementAnimationMap[key]
+            });
+            console.log('asd pending', elementsWithPendingAnimations)
             animations.forEach((animation, index) => {
-                animatedChildrenKeys.forEach(key => {
-                    elementAnimationMap[key].prevAnimat = index;
-                });
                 if (index !== 0 && index <= animations.length - 1) {
                     const prevAnimation = animations[index - 1];
                     const prevAnimations = animations.slice(0, index);
+                    const isLastAnimation = index === animations.length - 1;
                     const delay = this.getAnimationDelay(prevAnimations);
                     this.requestTimeout(() => {
-                        this.animate(animation, false, animatedChildrenKeys, prevAnimation);
+                        this.animate(animation, false, animatedChildrenKeys, prevAnimation, prevAnimations, isLastAnimation);
                     }, delay);
                 } else {
                     this.animate(animation, false, animatedChildrenKeys);
@@ -294,6 +337,11 @@ class Reanimate extends Component {
         return nextState.children.length !== this.state.children.length || this.state.style !== nextState.style;
     }
 
+    // uuidv4() {
+    //     return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+    //         (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+    //     );
+    // }
 
     componentDidMount() {
         this.addRequestAnimFramePolyfill();
@@ -325,9 +373,8 @@ class Reanimate extends Component {
 
         const childrenClone = React.Children.map(children, (child) => {
             const childAnimationData = elementAnimationMap[child.key];
-            const { animationPending, currentStyle, startStyle, isStarting } = childAnimationData;
-            let childStyle = animationPending && !isStarting ? currentStyle : startStyle;
-
+            const { animationPending, currentStyle, startStyle, isStarting, isUnmounting, isMounted } = childAnimationData;
+            let childStyle = !isStarting ? currentStyle : startStyle;
             const childClone = React.cloneElement(child, {
                 ...child.props,
                 identification: child.key,
