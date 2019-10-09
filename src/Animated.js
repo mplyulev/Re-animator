@@ -70,7 +70,7 @@ class Animated extends Component {
                     from: '14px',
                     to: '25px',
                     type: 'linear',
-                    speed: 555
+                    speed: 5255
                 }
             }
         ];

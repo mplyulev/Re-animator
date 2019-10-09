@@ -58,7 +58,6 @@ class Reanimate extends Component {
     }
 
     animate = (animation, isUnmounting, animatedChildrenKeys, prevAnimation, prevAnimations, isLastAnimation) => {
-        console.log('asd anim', animation);
         let { leavingElementsKeys, elementAnimationMap } = this.state;
         const { exitAnimations, globalSpeed, children, noEntryAnimation, noExitAnimation } = this.props;
         let style;
@@ -100,7 +99,13 @@ class Reanimate extends Component {
                     elementAnimationMap[child.key].startStyle = style
                     elementAnimationMap[child.key].currentStyle = newStyle;
                     elementAnimationMap[child.key].isStarting = true;
-                    elementAnimationMap[child.key].prevAnimations = prevAnimations
+                    console.log('asd prevs', prevAnimations);
+                    if (!isUnmounting) {
+                        elementAnimationMap[child.key].prevMountAnimations = prevAnimations
+                    } else {
+                        elementAnimationMap[child.key].prevUnmountAnimations = prevAnimations
+                    }
+
                 }
             });
 
@@ -224,68 +229,48 @@ class Reanimate extends Component {
         })();
     }
 
-    componentWillReceiveProps(nextProps, nextState) {
-        const newChildren = nextProps.children;
-        const oldChildren = this.props.children;
-        const { elementAnimationMap } = this.state;
-        const { animations, exitAnimations } = this.props;
-        if (newChildren.length !== oldChildren.length && newChildren.length < oldChildren.length) {
-            const animatedChildrenKeys = this.findRemovedChildrenKeys(newChildren, oldChildren).animatedChildrenKeys;
-            animatedChildrenKeys.forEach(key => {
-                elementAnimationMap[key].isUnmounting = true;
-            });
-            this.handleUnmountingAnimation(exitAnimations || animations, animatedChildrenKeys, elementAnimationMap);
-        }
-
-        if (newChildren.length !== oldChildren.length && newChildren.length > oldChildren.length) {
-            const animatedChildrenKeys = this.findAddedChildrenKeys(newChildren, oldChildren).animatedChildrenKeys;
-            animatedChildrenKeys.forEach(key => {
-                elementAnimationMap[key] = {
-                    isUnmounting: false
-                }
-            });
-
-            this.handleMountingAnimations(animations, animatedChildrenKeys, elementAnimationMap);
-        }
-    }
-
     handleUnmountingAnimation = (animations, animatedChildrenKeys, elementAnimationMap) => {
         this.setState({ animatedChildrenKeys, isMounting: false }, () => {
             const { elementsWithFinishedAnimations, elementsWithPendingAnimations } = this.sortElements(animatedChildrenKeys, elementAnimationMap);
             Object.keys(elementsWithPendingAnimations).forEach(key => {
-                if (elementsWithPendingAnimations[key].prevAnimations) {
-                    this.handleAnimations(elementsWithPendingAnimations[key].prevAnimations.reverse(), Object.keys(elementsWithPendingAnimations));
+                const animationsClone = elementsWithPendingAnimations[key].prevMountAnimations ? elementsWithPendingAnimations[key].prevMountAnimations.slice() : animations.slice;
+                if (elementsWithPendingAnimations[key].prevMountAnimations) {
+                    this.handleAnimations(animationsClone.reverse(), Object.keys(elementsWithPendingAnimations), true);
                 }
 
-                if (!elementsWithPendingAnimations[key].prevAnimations) {
-                    this.animate(animations.reverse()[0], true, Object.keys(elementsWithPendingAnimations));
+                if (!elementsWithPendingAnimations[key].prevMountAnimations) {
+                    this.animate(animationsClone.reverse()[0], true, Object.keys(elementsWithPendingAnimations));
                 }
             });
 
             if (Object.keys(elementsWithFinishedAnimations).length > 0) {
-                console.log('asd handle');
-                this.handleAnimations(animations.reverse(), Object.keys(elementsWithFinishedAnimations));
+                this.handleAnimations(animations.reverse(), Object.keys(elementsWithFinishedAnimations), true);
             }
         });
     }
 
-    handleMountingAnimations = (animations, animatedChildrenKeys, elementAnimationMap) => {
+    handleMountingAnimations = (animations, animatedChildrenKeys, elementAnimationMap, isInitialMount) => {
         this.setState({ animatedChildrenKeys, elementAnimationMap, isMounting: true }, () => {
+            if (isInitialMount) {
+                this.handleAnimations(animations, animatedChildrenKeys, false);
+                return;
+            }
+
             const { elementsWithFinishedAnimations, elementsWithPendingAnimations } = this.sortElements(animatedChildrenKeys, elementAnimationMap);
 
-            animations.forEach((animation, index) => {
-                if (index !== 0 && index <= animations.length - 1) {
-                    const prevAnimation = animations[index - 1];
-                    const isLastAnimation = index === animations.length - 1;
-                    const prevAnimations = isLastAnimation ? animations : animations.slice(0, index);
-                    const delay = this.getAnimationDelay(animations.slice(0, index));
-                    this.requestTimeout(() => {
-                        this.animate(animation, false, animatedChildrenKeys, prevAnimation, prevAnimations, isLastAnimation);
-                    }, delay);
-                } else {
-                    this.animate(animation, false, animatedChildrenKeys);
+            Object.keys(elementsWithPendingAnimations).forEach(key => {
+                if (elementsWithPendingAnimations[key].prevAnimations) {
+                    this.handleAnimations(elementsWithPendingAnimations[key].prevAnimations.reverse(), Object.keys(elementsWithPendingAnimations), false);
+                }
+
+                if (!elementsWithPendingAnimations[key].prevAnimations) {
+                    this.animate(animations, false, Object.keys(elementsWithPendingAnimations));
                 }
             });
+
+            if (Object.keys(elementsWithFinishedAnimations).length > 0) {
+                this.handleAnimations(animations, Object.keys(elementsWithFinishedAnimations), false);
+            }
         });
     }
 
@@ -301,19 +286,20 @@ class Reanimate extends Component {
         return { elementsWithPendingAnimations, elementsWithFinishedAnimations }
     }
 
-    handleAnimations = (animations, animatedChildrenKeys) => {
+    handleAnimations = (animations, animatedChildrenKeys, isUnmounting) => {
+        console.log('asd anims', animations);
         animations.forEach((animation, index) => {
-            if (index !== 0 && index <= animations.length - 1) {
-                const prevAnimation = animations[index - 1];
-                const prevAnimations = isLastAnimation ? animations : animations.slice(0, index);
-                const delay = this.getAnimationDelay(animations.slice(0, index));
-                const isLastAnimation = index === animations.length - 1;
-                this.requestTimeout(() => {
-                    this.animate(animation, true, animatedChildrenKeys, prevAnimation, prevAnimations, isLastAnimation);
-                }, delay);
-            } else {
-                this.animate(animation, true, animatedChildrenKeys);
-            }
+
+            const prevAnimation = index !== 0 && animations[index - 1];
+            const isLastAnimation = index === animations.length - 1;
+
+            const prevAnimations = isLastAnimation ? animations : animations.slice(0, index + 1);
+            console.log('asd', isLastAnimation, prevAnimations);
+            const delay = this.getAnimationDelay(animations.slice(0, index));
+            this.requestTimeout(() => {
+                this.animate(animation, isUnmounting, animatedChildrenKeys, prevAnimation, prevAnimations, isLastAnimation);
+            }, delay);
+
         });
     }
 
@@ -348,8 +334,33 @@ class Reanimate extends Component {
             }
         });
 
-        this.handleMountingAnimations(animations, animatedChildrenKeys, elementAnimationMap);
+        this.handleMountingAnimations(animations, animatedChildrenKeys, elementAnimationMap, true);
     };
+
+    componentWillReceiveProps(nextProps, nextState) {
+        const newChildren = nextProps.children;
+        const oldChildren = this.props.children;
+        const { elementAnimationMap } = this.state;
+        const { animations, exitAnimations } = this.props;
+        if (newChildren.length !== oldChildren.length && newChildren.length < oldChildren.length) {
+            const animatedChildrenKeys = this.findRemovedChildrenKeys(newChildren, oldChildren).animatedChildrenKeys;
+            animatedChildrenKeys.forEach(key => {
+                elementAnimationMap[key].isUnmounting = true;
+            });
+            this.handleUnmountingAnimation(exitAnimations || animations, animatedChildrenKeys, elementAnimationMap);
+        }
+
+        if (newChildren.length !== oldChildren.length && newChildren.length > oldChildren.length) {
+            const animatedChildrenKeys = this.findAddedChildrenKeys(newChildren, oldChildren).animatedChildrenKeys;
+            animatedChildrenKeys.forEach(key => {
+                elementAnimationMap[key] = {
+                    isUnmounting: false
+                }
+            });
+
+            this.handleMountingAnimations(animations, animatedChildrenKeys, elementAnimationMap);
+        }
+    }
 
     componentWillUnmount() {
         this.wrapperRef.current.removeEventListener('transitionend', this.handleTransitionEnd)
@@ -366,6 +377,7 @@ class Reanimate extends Component {
             const childAnimationData = elementAnimationMap[child.key];
             const { animationPending, currentStyle, startStyle, isStarting, isUnmounting, isMounted } = childAnimationData;
             let childStyle = !isStarting ? currentStyle : startStyle;
+
             const childClone = React.cloneElement(child, {
                 ...child.props,
                 identification: child.key,
