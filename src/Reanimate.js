@@ -96,10 +96,11 @@ class Reanimate extends Component {
                         }
                     });
 
-                    elementAnimationMap[child.key].startStyle = style
+                    elementAnimationMap[child.key].startStyle = style;
                     elementAnimationMap[child.key].currentStyle = newStyle;
                     elementAnimationMap[child.key].isStarting = true;
-                    console.log('asd prevs', prevAnimations);
+                    elementAnimationMap[child.key].startTime = Date.now();
+
                     if (!isUnmounting) {
                         elementAnimationMap[child.key].prevMountAnimations = prevAnimations
                     } else {
@@ -235,7 +236,10 @@ class Reanimate extends Component {
             Object.keys(elementsWithPendingAnimations).forEach(key => {
                 const animationsClone = elementsWithPendingAnimations[key].prevMountAnimations ? elementsWithPendingAnimations[key].prevMountAnimations.slice() : animations.slice;
                 if (elementsWithPendingAnimations[key].prevMountAnimations) {
-                    this.handleAnimations(animationsClone.reverse(), Object.keys(elementsWithPendingAnimations), true);
+                    console.log('asd start', elementsWithPendingAnimations[key].startTime);
+                    const timeElapsed = Date.now() - elementsWithPendingAnimations[key].startTime;
+                    console.log('asd time', timeElapsed);
+                    this.handleAnimations(animationsClone.reverse(), Object.keys(elementsWithPendingAnimations), true, timeElapsed, true);
                 }
 
                 if (!elementsWithPendingAnimations[key].prevMountAnimations) {
@@ -286,26 +290,27 @@ class Reanimate extends Component {
         return { elementsWithPendingAnimations, elementsWithFinishedAnimations }
     }
 
-    handleAnimations = (animations, animatedChildrenKeys, isUnmounting) => {
-        console.log('asd anims', animations);
+    handleAnimations = (animations, animatedChildrenKeys, isUnmounting, timeElapsed, isPending) => {
         animations.forEach((animation, index) => {
-
             const prevAnimation = index !== 0 && animations[index - 1];
             const isLastAnimation = index === animations.length - 1;
-
+            console.log('asd time elapsed', timeElapsed);
             const prevAnimations = isLastAnimation ? animations : animations.slice(0, index + 1);
-            console.log('asd', isLastAnimation, prevAnimations);
-            const delay = this.getAnimationDelay(animations.slice(0, index));
+            const delay = this.getAnimationDelay(animations.slice(0, index), timeElapsed, isPending);
             this.requestTimeout(() => {
                 this.animate(animation, isUnmounting, animatedChildrenKeys, prevAnimation, prevAnimations, isLastAnimation);
             }, delay);
-
         });
     }
 
-    getAnimationDelay = (prevAnimations) => {
-        return prevAnimations.reduce((acc, prevAnimation) => {
-            acc += Math.max(...Object.values(prevAnimation).map(d => d.speed));
+    getAnimationDelay = (prevAnimations, timeElapsed, isPending) => {
+        return prevAnimations.reduce((acc, prevAnimation, index) => {
+            if (isPending && index === 0) {
+                acc += timeElapsed;
+            } else {
+                acc += Math.max(...Object.values(prevAnimation).map(d => d.speed));
+            }
+
             return acc;
         }, 0);
     }
@@ -377,7 +382,7 @@ class Reanimate extends Component {
             const childAnimationData = elementAnimationMap[child.key];
             const { animationPending, currentStyle, startStyle, isStarting, isUnmounting, isMounted } = childAnimationData;
             let childStyle = !isStarting ? currentStyle : startStyle;
-
+            console.log('asd map', elementAnimationMap);
             const childClone = React.cloneElement(child, {
                 ...child.props,
                 identification: child.key,
