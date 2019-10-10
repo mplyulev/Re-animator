@@ -32,7 +32,7 @@ class Animated extends Component {
                     from: 0,
                     to: 300,
                     type: 'linear',
-                    speed: 1000
+                    speed: 2222
                 },
                 top: {
                     from: 0,
