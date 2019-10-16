@@ -236,9 +236,7 @@ class Reanimate extends Component {
             Object.keys(elementsWithPendingAnimations).forEach(key => {
                 const animationsClone = elementsWithPendingAnimations[key].prevMountAnimations ? elementsWithPendingAnimations[key].prevMountAnimations.slice() : animations.slice;
                 if (elementsWithPendingAnimations[key].prevMountAnimations) {
-                    console.log('asd start', elementsWithPendingAnimations[key].startTime);
                     const timeElapsed = Date.now() - elementsWithPendingAnimations[key].startTime;
-                    console.log('asd time', timeElapsed);
                     this.handleAnimations(animationsClone.reverse(), Object.keys(elementsWithPendingAnimations), true, timeElapsed, true);
                 }
 
@@ -291,10 +289,36 @@ class Reanimate extends Component {
     }
 
     handleAnimations = (animations, animatedChildrenKeys, isUnmounting, timeElapsed, isPending) => {
-        animations.forEach((animation, index) => {
+        const reversedAnimations = [];
+        if (isUnmounting) {
+            animations.forEach(animation => {
+                const animationClone = Object.assign({}, animation);
+                if (Object.keys(animationClone).length <= 1) {
+                    reversedAnimations.push(animationClone);
+                } else {
+                    const animationToArray = Object.keys(animationClone).map(key => {
+                        return { [key]: animationClone[key] };
+                    });
+
+                    animationToArray.sort((a, b) => b[Object.keys(b)[0]].speed - a[Object.keys(a)[0]].speed);
+                    animationToArray.forEach((prop, index) => {
+                        let propSpeed = Object.values(prop)[0].speed;
+                        if (index < animationToArray.length - 1) {
+                            propSpeed = propSpeed - Object.values(animationToArray[index + 1])[0].speed;
+                            Object.values(prop)[0].speed = propSpeed;
+                            reversedAnimations.push(prop);
+                        } else {
+                            reversedAnimations.push(prop);
+                        }
+                    });
+                }
+            })
+        }
+        console.log('asd revs', reversedAnimations);
+
+        (isUnmounting ? reversedAnimations : animations).forEach((animation, index) => {
             const prevAnimation = index !== 0 && animations[index - 1];
             const isLastAnimation = index === animations.length - 1;
-            console.log('asd time elapsed', timeElapsed);
             const prevAnimations = isLastAnimation ? animations : animations.slice(0, index + 1);
             const delay = this.getAnimationDelay(animations.slice(0, index), timeElapsed, isPending);
             this.requestTimeout(() => {
@@ -382,7 +406,6 @@ class Reanimate extends Component {
             const childAnimationData = elementAnimationMap[child.key];
             const { animationPending, currentStyle, startStyle, isStarting, isUnmounting, isMounted } = childAnimationData;
             let childStyle = !isStarting ? currentStyle : startStyle;
-            console.log('asd map', elementAnimationMap);
             const childClone = React.cloneElement(child, {
                 ...child.props,
                 identification: child.key,

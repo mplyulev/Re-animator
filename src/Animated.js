@@ -65,14 +65,14 @@ class Animated extends Component {
             //         speed: 555
             //     }
             // },
-            {
-                fontSize: {
-                    from: '14px',
-                    to: '25px',
-                    type: 'linear',
-                    speed: 5255
-                }
-            }
+            // {
+            //     fontSize: {
+            //         from: '14px',
+            //         to: '25px',
+            //         type: 'linear',
+            //         speed: 5255
+            //     }
+            // }
         ];
 
         const exitAnimations = [{
