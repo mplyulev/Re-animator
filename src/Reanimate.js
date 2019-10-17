@@ -37,7 +37,10 @@ class Reanimate extends Component {
         };
 
         const { globalSpeed, exitAnimations } = this.props;
-        Object.entries(isUnmounting ? exitAnimations || animations : animations).map(([cssPropName, value], index) => {
+        const finalAnimations = isUnmounting ? exitAnimations || animations : animations;
+        const { delay, ...sanitizedAnimationsObject } = finalAnimations;
+        Object.entries(sanitizedAnimationsObject).map(([cssPropName, value], index) => {
+            console.log('asd sanitized', sanitizedAnimationsObject);
             if (isUnmounting) {
                 style[cssPropName] = exitAnimations !== undefined ? value.from : value.to;
             }
@@ -51,7 +54,7 @@ class Reanimate extends Component {
                 cssPropName = this.constructCSSPropName(cssPropName);
             }
 
-            style.transition += `${cssPropName} ${(value.speed || globalSpeed) / 1000}s ${value.type}${index !== Object.entries(animations).length - 1 ? ', ' : ''}`;
+            style.transition += `${cssPropName} ${(value.speed || globalSpeed) / 1000}s ${value.type}${index !== Object.entries(sanitizedAnimationsObject).length - 1 ? ', ' : ''}`;
         });
 
         return style;
@@ -69,14 +72,16 @@ class Reanimate extends Component {
         } else if (!isUnmounting) {
             style = this.constructStyle(animation, false);
         }
-
+        console.log('asd old', style);
         const newStyle = Object.assign({}, style);
         Object.entries(!isUnmounting ? animation : exitAnimations || animation).map(([key, value]) => {
-            newStyle[key] = value.to;
-            if (!isUnmounting || (isUnmounting && exitAnimations !== undefined)) {
+            if (key !== 'delay') {
                 newStyle[key] = value.to;
-            } else if (isUnmounting && exitAnimations === undefined) {
-                newStyle[key] = value.from;
+                if (!isUnmounting || (isUnmounting && exitAnimations !== undefined)) {
+                    newStyle[key] = value.to;
+                } else if (isUnmounting && exitAnimations === undefined) {
+                    newStyle[key] = value.from;
+                }
             }
         });
 
@@ -137,7 +142,7 @@ class Reanimate extends Component {
 
                     }
                 });
-
+                console.log('asd new', newStyle);
                 this.setState({ style: newStyle });
             }, 0)
         }, 0);
@@ -293,7 +298,9 @@ class Reanimate extends Component {
         if (isUnmounting) {
             animations.forEach(animation => {
                 const animationClone = Object.assign({}, animation);
+
                 if (Object.keys(animationClone).length <= 1) {
+                    console.log('asd small', animationClone);
                     reversedAnimations.push(animationClone);
                 } else {
                     const animationToArray = Object.keys(animationClone).map(key => {
@@ -301,26 +308,37 @@ class Reanimate extends Component {
                     });
 
                     animationToArray.sort((a, b) => b[Object.keys(b)[0]].speed - a[Object.keys(a)[0]].speed);
+                    console.log('asd to array', animationToArray);
                     animationToArray.forEach((prop, index) => {
-                        let propSpeed = Object.values(prop)[0].speed;
+                        const animation = Object.assign({}, prop);
+                        let animationSpeed = Object.values(prop)[0].speed;
+                        let animationDelay = 0;
+
                         if (index < animationToArray.length - 1) {
-                            propSpeed = propSpeed - Object.values(animationToArray[index + 1])[0].speed;
-                            Object.values(prop)[0].speed = propSpeed;
-                            reversedAnimations.push(prop);
-                        } else {
-                            reversedAnimations.push(prop);
+                            animationDelay = animationSpeed - Object.values(animationToArray[index + 1])[0].speed;
                         }
+                        // const prevProp = animationToArray[index - 1];
+                        if (index !== 0) {
+                            animation[Object.keys(animationToArray[index - 1])[0]] = Object.values(animationToArray[index - 1])[0];
+                        }
+
+                        animation.delay = animationDelay;
+                        console.log('asd delay', prop, animationDelay);
+                        console.log('asd reverseded|', reversedAnimations);
+                        reversedAnimations.push(animation);
                     });
                 }
             })
         }
-        console.log('asd revs', reversedAnimations);
-
-        (isUnmounting ? reversedAnimations : animations).forEach((animation, index) => {
-            const prevAnimation = index !== 0 && animations[index - 1];
-            const isLastAnimation = index === animations.length - 1;
-            const prevAnimations = isLastAnimation ? animations : animations.slice(0, index + 1);
-            const delay = this.getAnimationDelay(animations.slice(0, index), timeElapsed, isPending);
+        let prevDelay = 0;
+        (isUnmounting ? reversedAnimations : animations).forEach((animation, index, animArray) => {
+            const prevAnimation = index !== 0 && animArray[index - 1];
+            const isLastAnimation = index === animArray.length - 1;
+            const prevAnimations = isLastAnimation ? animArray : animArray.slice(0, index + 1);
+            const regularDelay = this.getAnimationDelay(animArray.slice(0, index), timeElapsed, isPending);
+            const delay = isUnmounting && index !== 0 && animArray[index - 1].delay ? animArray[index - 1].delay + prevDelay : regularDelay;
+            prevDelay = delay;
+            console.log('asd reg', animation, regularDelay, delay);
             this.requestTimeout(() => {
                 this.animate(animation, isUnmounting, animatedChildrenKeys, prevAnimation, prevAnimations, isLastAnimation);
             }, delay);
@@ -328,11 +346,14 @@ class Reanimate extends Component {
     }
 
     getAnimationDelay = (prevAnimations, timeElapsed, isPending) => {
+        console.log('asd prev', prevAnimations, timeElapsed, isPending);
         return prevAnimations.reduce((acc, prevAnimation, index) => {
-            if (isPending && index === 0) {
+            if (isPending && index === 0 && timeElapsed) {
                 acc += timeElapsed;
             } else {
-                acc += Math.max(...Object.values(prevAnimation).map(d => d.speed));
+                acc += Math.max(...Object.values(prevAnimation).map(d => {
+                    return d.speed ? d.speed : 0
+                }));
             }
 
             return acc;

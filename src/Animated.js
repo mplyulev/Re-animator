@@ -32,14 +32,20 @@ class Animated extends Component {
                     from: 0,
                     to: 300,
                     type: 'linear',
-                    speed: 2222
+                    speed: 2300
                 },
                 top: {
                     from: 0,
                     to: 300,
                     type: 'linear',
                     speed: 1000
-                }
+                },
+                fontSize: {
+                    from: 14,
+                    to: 50,
+                    type: 'linear',
+                    speed: 5000
+                },
             },
             {
                 top: {
