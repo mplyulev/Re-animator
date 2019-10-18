@@ -31,16 +31,15 @@ class Reanimate extends Component {
         return cssPropName;
     }
 
-    constructStyle = (animations, isUnmounting) => {
+    constructStyle = (animations, isUnmounting, prevAnimations) => {
         let style = {
             transition: ''
         };
-
+        console.log('asd prevs', prevAnimations);
         const { globalSpeed, exitAnimations } = this.props;
         const finalAnimations = isUnmounting ? exitAnimations || animations : animations;
-        const { delay, ...sanitizedAnimationsObject } = finalAnimations;
+        const { delay, isMulti, ...sanitizedAnimationsObject } = finalAnimations;
         Object.entries(sanitizedAnimationsObject).map(([cssPropName, value], index) => {
-            console.log('asd sanitized', sanitizedAnimationsObject);
             if (isUnmounting) {
                 style[cssPropName] = exitAnimations !== undefined ? value.from : value.to;
             }
@@ -49,7 +48,6 @@ class Reanimate extends Component {
                 style[cssPropName] = value.from;
             }
 
-
             if (cssPropName !== cssPropName.toLowerCase()) {
                 cssPropName = this.constructCSSPropName(cssPropName);
             }
@@ -57,6 +55,25 @@ class Reanimate extends Component {
             style.transition += `${cssPropName} ${(value.speed || globalSpeed) / 1000}s ${value.type}${index !== Object.entries(sanitizedAnimationsObject).length - 1 ? ', ' : ''}`;
         });
 
+        if (isUnmounting) {
+            prevAnimations.filter(animation => animation.isMulti).forEach(animation => {
+                const { delay, isMulti, ...sanitizedAnimation } = animation;
+                Object.keys(sanitizedAnimation).forEach((propName, index) => {
+                    const value = animation[propName];
+                    console.log('asd sanity', sanitizedAnimationsObject, sanitizedAnimation);
+                    if (!sanitizedAnimationsObject[propName]) {
+                        if (propName !== propName.toLowerCase()) {
+                            propName = this.constructCSSPropName(propName);
+                        }
+
+                        style.transition += `,${propName} ${(value.speed || globalSpeed) / 1000}s ${value.type}${index !== Object.entries(sanitizedAnimation).length - 1 ? ', ' : ''}`;
+                        style.transition = style.transition.replace(', ,', ', ');
+                    }
+                })
+            });
+        }
+
+        console.log('asd stylee', style);
         return style;
     }
 
@@ -66,11 +83,11 @@ class Reanimate extends Component {
         let style;
 
         if (isUnmounting && exitAnimations !== undefined) {
-            style = this.constructStyle(exitAnimations, false);
+            style = this.constructStyle(exitAnimations, false, prevAnimations);
         } else if (isUnmounting && exitAnimations === undefined) {
-            style = this.constructStyle(animation, true);
+            style = this.constructStyle(animation, true, prevAnimations);
         } else if (!isUnmounting) {
-            style = this.constructStyle(animation, false);
+            style = this.constructStyle(animation, false, prevAnimations);
         }
         console.log('asd old', style);
         const newStyle = Object.assign({}, style);
@@ -142,7 +159,8 @@ class Reanimate extends Component {
 
                     }
                 });
-                console.log('asd new', newStyle);
+
+                console.log('asd old new', newStyle);
                 this.setState({ style: newStyle });
             }, 0)
         }, 0);
@@ -300,7 +318,6 @@ class Reanimate extends Component {
                 const animationClone = Object.assign({}, animation);
 
                 if (Object.keys(animationClone).length <= 1) {
-                    console.log('asd small', animationClone);
                     reversedAnimations.push(animationClone);
                 } else {
                     const animationToArray = Object.keys(animationClone).map(key => {
@@ -308,28 +325,27 @@ class Reanimate extends Component {
                     });
 
                     animationToArray.sort((a, b) => b[Object.keys(b)[0]].speed - a[Object.keys(a)[0]].speed);
-                    console.log('asd to array', animationToArray);
                     animationToArray.forEach((prop, index) => {
                         const animation = Object.assign({}, prop);
+                        animation.isMulti = true;
                         let animationSpeed = Object.values(prop)[0].speed;
                         let animationDelay = 0;
 
                         if (index < animationToArray.length - 1) {
                             animationDelay = animationSpeed - Object.values(animationToArray[index + 1])[0].speed;
                         }
-                        // const prevProp = animationToArray[index - 1];
+
                         if (index !== 0) {
                             animation[Object.keys(animationToArray[index - 1])[0]] = Object.values(animationToArray[index - 1])[0];
                         }
 
                         animation.delay = animationDelay;
-                        console.log('asd delay', prop, animationDelay);
-                        console.log('asd reverseded|', reversedAnimations);
                         reversedAnimations.push(animation);
                     });
                 }
             })
         }
+        console.log('asd revs', reversedAnimations);
         let prevDelay = 0;
         (isUnmounting ? reversedAnimations : animations).forEach((animation, index, animArray) => {
             const prevAnimation = index !== 0 && animArray[index - 1];
@@ -346,7 +362,6 @@ class Reanimate extends Component {
     }
 
     getAnimationDelay = (prevAnimations, timeElapsed, isPending) => {
-        console.log('asd prev', prevAnimations, timeElapsed, isPending);
         return prevAnimations.reduce((acc, prevAnimation, index) => {
             if (isPending && index === 0 && timeElapsed) {
                 acc += timeElapsed;
@@ -364,11 +379,6 @@ class Reanimate extends Component {
         return nextState.children.length !== this.state.children.length || this.state.style !== nextState.style;
     }
 
-    // uuidv4() {
-    //     return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
-    //         (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-    //     );
-    // }
 
     componentDidMount() {
         this.addRequestAnimFramePolyfill();

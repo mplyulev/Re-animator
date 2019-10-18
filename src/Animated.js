@@ -32,19 +32,25 @@ class Animated extends Component {
                     from: 0,
                     to: 300,
                     type: 'linear',
-                    speed: 2300
+                    speed: 1000 // there is a problem with reversed animations when to props have the same speed 
                 },
                 top: {
                     from: 0,
                     to: 300,
                     type: 'linear',
-                    speed: 1000
+                    speed: 2000
                 },
                 fontSize: {
                     from: 14,
                     to: 50,
                     type: 'linear',
-                    speed: 5000
+                    speed: 3000
+                },
+                color: {
+                    from: 'red',
+                    to: 'yellow',
+                    type: 'linear',
+                    speed: 4000
                 },
             },
             {
@@ -52,7 +58,7 @@ class Animated extends Component {
                     from: 300,
                     to: 0,
                     type: 'linear',
-                    speed: 555
+                    speed: 3000
                 }
             },
             // {
